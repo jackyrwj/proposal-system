@@ -463,7 +463,7 @@ export default function Home() {
               {/* Background Image */}
               <div className="absolute inset-0">
                 <img
-                  src="/images/A0EAF49460E54E46669D06CDD14_7A4A668C_3C9EF.jpg"
+                  src="/images/hero/A0EAF49460E54E46669D06CDD14_7A4A668C_3C9EF.jpg"
                   alt="征集提案建议"
                   className="w-full h-full object-cover"
                 />

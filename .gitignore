@@ -57,12 +57,13 @@ uploads/
 /data/*.json
 !data/.gitkeep
 
-# Images that may contain sensitive info
-/public/images/hero/
+# Images - screenshots only
 *.png
+!public/images/**/*.png
 *.jpg
+!public/images/**/*.jpg
 *.jpeg
-!public/images/*.webp
+!public/images/**/*.jpeg
 
 # Backup files
 *_backup.*
