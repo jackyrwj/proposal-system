@@ -40,3 +40,30 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 nul
+
+# Sensitive data - database backups
+*.sql
+!sql/migrate_*.sql
+!sql/add_*.sql
+
+# Database dumps
+mysql.zip
+
+# User uploaded files
+/public/uploads/
+uploads/
+
+# Data files with sensitive info
+/data/*.json
+!data/.gitkeep
+
+# Images that may contain sensitive info
+/public/images/hero/
+*.png
+*.jpg
+*.jpeg
+!public/images/*.webp
+
+# Backup files
+*_backup.*
+*.bak
