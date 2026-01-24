@@ -9,8 +9,10 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'jdhtagz_local',
   timezone: '+08:00', // 设置为中国时区 (UTC+8)
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 100, // 增加连接池大小
   queueLimit: 0,
+  enableKeepAlive: true, // 保持连接活跃
+  keepAliveInitialDelay: 0,
   charset: 'utf8mb4',
   multipleStatements: true,
   // 强制使用 utf8mb4 编码
@@ -21,6 +23,13 @@ const pool = mysql.createPool({
     return next();
   },
 });
+
+// 定期清理空闲连接，防止连接泄漏
+setInterval(() => {
+  pool.query('SELECT 1').catch(err => {
+    console.warn('[DB] Keep-alive query failed:', err.message);
+  });
+}, 300000); // 每5分钟执行一次
 
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
   try {

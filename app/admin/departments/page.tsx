@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
   Loader2,
@@ -12,10 +12,12 @@ import {
   Copy,
   Check,
   X,
+  RefreshCw,
+  Key,
 } from 'lucide-react';
 
 interface Department {
-  departId: number;
+  departId: string;
   name: string;
   account: string;
 }
@@ -29,13 +31,18 @@ interface Toast {
 export default function DepartmentsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [showDeptForm, setShowDeptForm] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
-  const [deptForm, setDeptForm] = useState({
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [addForm, setAddForm] = useState({
     name: '',
     account: '',
     password: '',
+  });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    account: '',
   });
 
   // Toast notifications
@@ -51,9 +58,22 @@ export default function DepartmentsPage() {
   const [copied, setCopied] = useState(false);
   const [isCreatePassword, setIsCreatePassword] = useState(false);
 
+  // 编辑行引用，用于滚动
+  const editRowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
   useEffect(() => {
     fetchDepartments();
   }, []);
+
+  // 当开始编辑时，滚动到对应位置
+  useEffect(() => {
+    if (editingDeptId && editRowRefs.current[editingDeptId]) {
+      editRowRefs.current[editingDeptId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [editingDeptId]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now();
@@ -76,35 +96,29 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleSaveDept = async () => {
-    if (!deptForm.name || !deptForm.account) {
+  const handleSaveAdd = async () => {
+    if (!addForm.name || !addForm.account) {
       showToast('部门名称和账号不能为空', 'error');
       return;
     }
 
     setSaving(true);
     try {
-      const url = editingDept
-        ? `/api/admin/settings/departments/${editingDept.departId}`
-        : '/api/admin/settings/departments';
-      const method = editingDept ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch('/api/admin/settings/departments', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(deptForm),
+        body: JSON.stringify(addForm),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(editingDept ? '更新成功' : '添加成功', 'success');
-        setShowDeptForm(false);
-        setEditingDept(null);
-        setDeptForm({ name: '', account: '', password: '' });
+        showToast('添加成功', 'success');
+        setShowAddForm(false);
+        setAddForm({ name: '', account: '', password: '' });
 
         // If creating new department and password was generated, show it
-        if (!editingDept && json.data?.password) {
+        if (json.data?.password) {
           setNewPassword(json.data.password);
-          setResetPasswordDept({ departId: json.data.departId, name: deptForm.name, account: deptForm.account });
+          setResetPasswordDept({ departId: String(json.data.departId), name: addForm.name, account: addForm.account });
           setShowPassword(false);
           setCopied(false);
           setIsCreatePassword(true);
@@ -121,7 +135,37 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleDeleteDept = async (deptId: number) => {
+  const handleSaveEdit = async () => {
+    if (!editForm.name || !editForm.account) {
+      showToast('部门名称和账号不能为空', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/settings/departments/${editingDeptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('更新成功', 'success');
+        setEditingDeptId(null);
+        fetchDepartments();
+      } else {
+        showToast(json.error || '保存失败', 'error');
+      }
+    } catch (error) {
+      showToast('保存失败', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteDept = async (deptId: string) => {
+    if (!confirm('确定要删除这个部门吗？')) return;
+
     try {
       const res = await fetch(`/api/admin/settings/departments/${deptId}`, { method: 'DELETE' });
       const json = await res.json();
@@ -133,6 +177,54 @@ export default function DepartmentsPage() {
       }
     } catch (error) {
       showToast('删除失败', 'error');
+    }
+  };
+
+  const handleStartEdit = (dept: Department) => {
+    setEditForm({
+      name: dept.name,
+      account: dept.account,
+    });
+    setEditingDeptId(dept.departId);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDeptId(null);
+  };
+
+  // 从 CDSP 同步部门数据
+  const handleSync = async () => {
+    if (!confirm('确定要从全校组织机构同步部门数据吗？\n\n- 新增部门会自动添加\n- 已有部门会更新名称\n- 此操作可能需要几秒钟')) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/settings/departments/sync', {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (json.success) {
+        const { added, updated, skipped, total, skipDetails } = json.data;
+        const skipReasons = [];
+        if (skipDetails.notUsed > 0) skipReasons.push(`${skipDetails.notUsed}个未启用`);
+        if (skipDetails.noCode > 0) skipReasons.push(`${skipDetails.noCode}个无代码`);
+        if (skipDetails.noName > 0) skipReasons.push(`${skipDetails.noName}个无名称`);
+        if (skipDetails.unchanged > 0) skipReasons.push(`${skipDetails.unchanged}个已存在且未变化`);
+
+        const skipMsg = skipReasons.length > 0 ? `（${skipReasons.join('、')}）` : '';
+        showToast(
+          `同步成功！共 ${total} 条数据，新增 ${added} 个，更新 ${updated} 个，跳过 ${skipped} 个${skipMsg}`,
+          'success'
+        );
+        fetchDepartments();
+      } else {
+        showToast(json.error || '同步失败', 'error');
+      }
+    } catch (error) {
+      showToast('同步失败', 'error');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -179,12 +271,6 @@ export default function DepartmentsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleEditDept = (dept: Department) => {
-    setEditingDept({ ...dept, name: dept.name });
-    setDeptForm({ name: dept.name, account: dept.account, password: '' });
-    setShowDeptForm(true);
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -204,7 +290,7 @@ export default function DepartmentsPage() {
               toast.type === 'success'
                 ? 'bg-green-500 text-white'
                 : 'bg-red-500 text-white'
-            } animate-slide-in`}
+            }`}
           >
             {toast.type === 'success' ? (
               <Check size={18} />
@@ -219,7 +305,7 @@ export default function DepartmentsPage() {
       {/* 密码管理弹窗 */}
       {passwordManageDept && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">密码管理</h3>
             <div className="bg-gray-50 rounded-xl p-4 mb-4">
               <p className="text-sm text-gray-500 mb-1">部门名称</p>
@@ -289,7 +375,7 @@ export default function DepartmentsPage() {
       {/* 密码显示弹窗 */}
       {resetPasswordDept && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
               {isCreatePassword ? '部门已创建' : '密码已重置'}
             </h3>
@@ -349,19 +435,17 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* 添加/编辑表单 */}
-      {showDeptForm && (
+      {/* 添加部门表单区域 */}
+      {showAddForm && (
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            {editingDept ? '编辑部门' : '添加新部门'}
-          </h3>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">添加新部门</h3>
+          <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">部门名称 *</label>
               <input
                 type="text"
-                value={deptForm.name}
-                onChange={(e) => setDeptForm(prev => ({ ...prev, name: e.target.value }))}
+                value={addForm.name}
+                onChange={(e) => setAddForm(prev => ({ ...prev, name: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
                 placeholder="请输入部门名称"
               />
@@ -370,29 +454,26 @@ export default function DepartmentsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">账号 *</label>
               <input
                 type="text"
-                value={deptForm.account}
-                onChange={(e) => setDeptForm(prev => ({ ...prev, account: e.target.value }))}
+                value={addForm.account}
+                onChange={(e) => setAddForm(prev => ({ ...prev, account: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
                 placeholder="请输入登录账号"
-                disabled={!!editingDept}
               />
             </div>
-            {!editingDept && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">初始密码</label>
-                <input
-                  type="text"
-                  value={deptForm.password}
-                  onChange={(e) => setDeptForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
-                  placeholder="留空自动生成8位随机密码"
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">初始密码</label>
+              <input
+                type="text"
+                value={addForm.password}
+                onChange={(e) => setAddForm(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
+                placeholder="留空自动生成8位随机密码"
+              />
+            </div>
           </div>
           <div className="flex gap-3">
             <button
-              onClick={handleSaveDept}
+              onClick={handleSaveAdd}
               disabled={saving}
               className="px-6 py-3 bg-[#1779DC] text-white rounded-xl hover:bg-[#2861AE] transition-colors disabled:opacity-50"
             >
@@ -400,9 +481,8 @@ export default function DepartmentsPage() {
             </button>
             <button
               onClick={() => {
-                setShowDeptForm(false);
-                setEditingDept(null);
-                setDeptForm({ name: '', account: '', password: '' });
+                setShowAddForm(false);
+                setAddForm({ name: '', account: '', password: '' });
               }}
               className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
             >
@@ -415,18 +495,26 @@ export default function DepartmentsPage() {
       {/* 部门列表 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800">职能部门列表</h3>
-          <button
-            onClick={() => {
-              setEditingDept(null);
-              setDeptForm({ name: '', account: '', password: '' });
-              setShowDeptForm(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1779DC] text-white rounded-lg hover:bg-[#2861AE] transition-colors"
-          >
-            <Plus size={16} />
-            添加部门
-          </button>
+          <h3 className="font-semibold text-gray-800">职能部门列表 ({departments.length}个)</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 border border-[#1779DC] text-[#1779DC] rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? '同步中...' : '同步数据'}
+            </button>
+            {!showAddForm && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1779DC] text-white rounded-lg hover:bg-[#2861AE] transition-colors"
+              >
+                <Plus size={16} />
+                添加部门
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -440,36 +528,91 @@ export default function DepartmentsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {departments.map((dept) => (
-                <tr key={dept.departId} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-600">{dept.departId}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-800">{dept.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{dept.account}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleEditDept(dept)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="编辑"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => setPasswordManageDept(dept)}
-                        className="px-2 py-1 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-sm"
-                        title="密码管理"
-                      >
-                        密码管理
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDept(dept.departId)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <React.Fragment key={dept.departId}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-600">{dept.departId}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-800">{dept.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{dept.account}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleStartEdit(dept)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="编辑"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => setPasswordManageDept(dept)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="密码管理"
+                        >
+                          <Key size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('确定要删除这个部门吗？')) {
+                              handleDeleteDept(dept.departId);
+                            }
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="删除"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {/* 编辑行展开 */}
+                  {editingDeptId === dept.departId && (
+                    <tr
+                      ref={(el) => editRowRefs.current[dept.departId] = el}
+                      className="bg-blue-50/50"
+                    >
+                      <td colSpan={4} className="px-4 py-4">
+                        <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+                          <Edit size={14} />
+                          <span className="font-medium">编辑部门: {dept.name}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3 max-w-md">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">部门名称</label>
+                            <input
+                              type="text"
+                              value={editForm.name}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1779DC] focus:border-transparent text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">账号</label>
+                            <input
+                              type="text"
+                              value={editForm.account}
+                              readOnly
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={saving}
+                            className="px-4 py-2 bg-[#1779DC] text-white rounded-lg hover:bg-[#2861AE] transition-colors disabled:opacity-50 text-sm"
+                          >
+                            {saving ? '保存中...' : '保存'}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {departments.length === 0 && (
                 <tr>

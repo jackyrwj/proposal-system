@@ -363,6 +363,46 @@ export async function GET(request: NextRequest) {
       { name: '90天以上', value: validProcessingTimes.filter((d: number) => d > 90).length },
     ].filter((item: any) => item.value > 0);
 
+    // 获取历年提案数据（单独查询，避免 Promise.all 过于复杂）
+    const [yearlyTajy, yearlyZsta] = await Promise.all([
+      query(`
+        SELECT
+          DATE_FORMAT(createAt, '%Y') as year,
+          COUNT(*) as count
+        FROM tajy
+        WHERE createAt IS NOT NULL
+        GROUP BY DATE_FORMAT(createAt, '%Y')
+        ORDER BY year ASC
+      `),
+      query(`
+        SELECT
+          DATE_FORMAT(createat, '%Y') as year,
+          COUNT(*) as count
+        FROM zsta
+        WHERE createat IS NOT NULL
+        GROUP BY DATE_FORMAT(createat, '%Y')
+        ORDER BY year ASC
+      `),
+    ]);
+
+    // 处理历年数据
+    const yearlyMap = new Map<string, { 提案建议: number; 正式提案: number }>();
+    yearlyTajy.forEach((item: any) => {
+      yearlyMap.set(item.year, { 提案建议: item.count, 正式提案: 0 });
+    });
+    yearlyZsta.forEach((item: any) => {
+      const existing = yearlyMap.get(item.year);
+      if (existing) {
+        existing.正式提案 = item.count;
+      } else {
+        yearlyMap.set(item.year, { 提案建议: 0, 正式提案: item.count });
+      }
+    });
+
+    const yearlyComparisonData = Array.from(yearlyMap.entries())
+      .map(([year, counts]) => ({ year, ...counts }))
+      .sort((a, b) => a.year.localeCompare(b.year));
+
     return NextResponse.json({
       success: true,
       data: {
@@ -430,6 +470,9 @@ export async function GET(request: NextRequest) {
           approvedProposals: proposalStatusData.find((d: any) => d.name === '已立案')?.value || 0,
           formalProposals: totalFormalCount,
         },
+
+        // 历年数据对比
+        yearlyComparison: yearlyComparisonData,
       },
     });
   } catch (error) {

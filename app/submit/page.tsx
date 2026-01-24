@@ -148,14 +148,10 @@ export default function SubmitPage() {
         if (!value.trim()) return '请选择相关职能部门';
         return null;
       case 'email':
-        if (!value.trim()) return '请输入邮箱';
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value.trim())) return '请输入有效的邮箱地址';
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return '请输入有效的邮箱地址';
         return null;
       case 'phone':
-        if (!value.trim()) return '请输入电话';
-        const phoneRegex = /^1[3-9]\d{9}$/;
-        if (!phoneRegex.test(value.trim())) return '请输入有效的手机号码';
+        if (value.trim() && !/^1[3-9]\d{9}$/.test(value.trim())) return '请输入有效的手机号码';
         return null;
     }
   };
@@ -1359,7 +1355,7 @@ export default function SubmitPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div id="email-field">
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                  * 邮箱：
+                  邮箱：
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={20} style={{
@@ -1395,7 +1391,7 @@ export default function SubmitPage() {
               </div>
               <div id="phone-field">
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                  * 电话：
+                  电话：
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Phone size={20} style={{

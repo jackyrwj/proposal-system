@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
 
         if (stuids.length > 0) {
           // 构建附议页面链接
-          const endorseUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/proposals/${insertId}`;
+          const endorseUrl = `http://172.31.171.244:3000/proposals/${insertId}`;
 
           // 发送附议邀请通知（企微 + 站内信，异步不阻塞响应）
           sendEndorseInvitationNotification(stuids, endorserIds, name, title, insertId, endorseUrl).catch(err => {

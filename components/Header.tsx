@@ -176,12 +176,18 @@ export default function Header() {
   const handleLogout = () => {
     // 清除用户 Cookie 和 localStorage
     document.cookie = 'user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
     setUserMenuOpen(false);
     // 触发自定义事件通知其他组件
     window.dispatchEvent(new Event('userLoggedOut'));
-    router.push('/');
+
+    // 跳转到 CAS logout 退出统一身份认证，然后回到首页
+    const CAS_SERVER = 'https://authserver.szu.edu.cn/authserver/';
+    const SERVICE_URL = 'http://172.31.171.244:3000/';
+    window.location.href = `${CAS_SERVER}logout?service=${encodeURIComponent(SERVICE_URL)}`;
   };
 
   const navItems = [
@@ -388,14 +394,17 @@ export default function Header() {
                   </Link>
                 </>
               )}
-              {/* 始终显示的后台系统按钮 */}
-              <Link
-                href="/admin/login"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 bg-white/10 hover:bg-white/20 text-white border border-white/20"
-              >
-                <ShieldCheck size={16} />
-                后台系统
-              </Link>
+
+              {/* 后台系统按钮 - 仅管理员可见 */}
+              {user?.isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                >
+                  <ShieldCheck size={16} />
+                  后台系统
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -464,15 +473,17 @@ export default function Header() {
                     </Link>
                   </>
                 )}
-                {/* 移动端：始终显示的后台系统按钮 */}
-                <Link
-                  href="/admin/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-white hover:bg-white/20"
-                >
-                  <ShieldCheck size={16} />
-                  后台系统
-                </Link>
+                {/* 移动端：后台系统按钮 - 仅管理员可见 */}
+                {user?.isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-white hover:bg-white/20"
+                  >
+                    <ShieldCheck size={16} />
+                    后台系统
+                  </Link>
+                )}
                 <Link
                   href="/submit"
                   onClick={() => setMobileMenuOpen(false)}

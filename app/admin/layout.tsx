@@ -71,7 +71,7 @@ export default function AdminLayout({
   }, [pathname]);
 
   useEffect(() => {
-    // 读取 Cookie 或 localStorage
+    // 读取前台个人登录状态
     const getCookie = (name: string) => {
       if (typeof document === 'undefined') return null;
       const value = `; ${document.cookie}`;
@@ -80,17 +80,27 @@ export default function AdminLayout({
       return null;
     };
 
-    const token = getCookie('adminToken') || localStorage.getItem('adminToken');
-    const userStr = getCookie('adminUser') || localStorage.getItem('adminUser');
+    const userStr = getCookie('user') || localStorage.getItem('user');
 
-    if (!token && pathname !== '/admin/login') {
-      router.push('/admin/login');
-    } else if (userStr) {
-      try {
-        setUser(JSON.parse(userStr));
-      } catch (e) {
-        console.error('Parse user error:', e);
+    if (!userStr) {
+      // 未登录，跳转到前台登录页面
+      router.push('/login?redirect=' + encodeURIComponent('/admin'));
+      return;
+    }
+
+    try {
+      const userData = JSON.parse(decodeURIComponent(userStr));
+      // 检查是否是管理员
+      if (!userData.isAdmin) {
+        // 不是管理员，无权限访问后台
+        alert('您没有管理员权限，无法访问后台管理系统');
+        router.push('/');
+        return;
       }
+      setUser(userData);
+    } catch (e) {
+      console.error('Parse user error:', e);
+      router.push('/login');
     }
 
     // 隐藏前台 Header（nav元素）和 Footer
@@ -107,8 +117,6 @@ export default function AdminLayout({
 
   // 获取待处理事项
   useEffect(() => {
-    if (pathname === '/admin/login') return;
-
     const fetchPendingTasks = async () => {
       try {
         const [pendingPropRes, pendingFormalRes] = await Promise.all([
@@ -202,13 +210,16 @@ export default function AdminLayout({
     }
   }, [notificationOpen]);
 
-  const handleLogout = async () => {
-    // 清除 Cookie
-    document.cookie = 'adminToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'adminUser=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    router.push('/admin/login');
+  const handleLogout = () => {
+    // 清除前台登录状态
+    document.cookie = 'user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    // 触发退出事件
+    window.dispatchEvent(new Event('userLoggedOut'));
+    // 跳转到前台首页（未登录状态）
+    router.push('/');
   };
 
   const handleToggleSidebar = () => {
@@ -216,14 +227,6 @@ export default function AdminLayout({
     setSidebarCollapsed(newState);
     localStorage.setItem('sidebarCollapsed', String(newState));
   };
-
-  if (pathname === '/admin/login') {
-    return (
-      <div className="min-h-screen bg-gray-100">
-        {children}
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

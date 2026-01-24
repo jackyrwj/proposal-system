@@ -83,6 +83,11 @@ interface DashboardData {
     depart: string;
     name: string;
   }>;
+  yearlyComparison: Array<{
+    year: string;
+    提案建议: number;
+    正式提案: number;
+  }>;
 }
 
 export default function AdminDashboardPage() {
@@ -334,6 +339,85 @@ export default function AdminDashboardPage() {
               />
               <Bar dataKey="value" fill="#1779DC" radius={[0, 4, 4, 0]} />
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 历年数据对比和月度折线图 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 历年提案数据对比 */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">历年提案数据对比</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data?.yearlyComparison || []} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="year"
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => `${value}年`}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                }}
+                labelFormatter={(value) => `${value}年`}
+              />
+              <Legend />
+              <Bar dataKey="提案建议" fill="#1779DC" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="正式提案" fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 月度提案趋势（折线图） */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">月度提案趋势（折线图）</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data?.trends.monthlyTrend || []} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="month"
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => {
+                  const parts = value.split('-');
+                  return `${parts[1]}月`;
+                }}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                }}
+                labelFormatter={(value) => {
+                  const parts = value.split('-');
+                  return `${parts[0]}年${parts[1]}月`;
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="提案建议"
+                stroke="#1779DC"
+                strokeWidth={2}
+                dot={{ fill: '#1779DC', r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="正式提案"
+                stroke="#10B981"
+                strokeWidth={2}
+                dot={{ fill: '#10B981', r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>

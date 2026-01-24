@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     } else {
       // 个人账号登录 - 查询 jdhmd 表
       const users = await query<any[]>(`
-        SELECT id, name, depart, phone, mail, stuid
+        SELECT id, name, depart, phone, mail, stuid, isAdmin
         FROM jdhmd
         WHERE id = ? AND password = ?
       `, [username, passwordHash]);
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
             depart: user.depart,
             phone: user.phone,
             mail: user.mail,
+            isAdmin: user.isAdmin === 1,
             type: 'individual',
           },
         });

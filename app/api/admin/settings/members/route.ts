@@ -1,32 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getChinaTimeString } from '@/lib/db';
 
 // GET /api/admin/settings/members - 获取教代会成员列表
 export async function GET() {
   try {
     const members = await query<{
       id: string;
+      stuid: string;
       name: string;
       unit: string;
       phone: string;
       cardNo: string;
       mail: string;
       isAdmin: number;
+      createAt: string;
     }>(`
-      SELECT id, name, depart as unit, phone, mail, isAdmin
+      SELECT id, stuid, name, depart as unit, phone, mail, isAdmin, createAt
       FROM jdhmd
-      ORDER BY id ASC
+      ORDER BY createAt ASC, id ASC
     `);
 
     // 映射字段名
     const data = members.map(m => ({
       id: m.id,
+      stuid: m.stuid || '',
       name: m.name,
       unit: m.unit || '',
       position: '',
       year: '',
       phone: m.phone || '',
-      cardNo: m.id,
+      cardNo: m.stuid || m.id,  // 校园卡号优先使用 stuid
       mail: m.mail || '',
       isAdmin: m.isAdmin,
     }));
@@ -48,7 +51,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, unit, position, year, phone, cardNo, mail } = body;
+    const { name, unit, position, year, phone, cardNo, mail, stuid } = body;
 
     if (!name || !cardNo) {
       return NextResponse.json({
@@ -59,11 +62,15 @@ export async function POST(request: NextRequest) {
 
     // 默认密码为 123456 的 MD5
     const defaultPassword = 'e10adc3949ba59abbe56e057f20f883e';
+    const now = getChinaTimeString();
+
+    // id 使用职工号，stuid 使用校园卡号
+    const employeeId = body.employeeId || cardNo;  // 如果没有职工号，使用校园卡号
 
     await query(`
-      INSERT INTO jdhmd (id, name, depart, phone, mail, password, isAdmin)
-      VALUES (?, ?, ?, ?, ?, ?, 0)
-    `, [cardNo, name, unit || '', phone || '', mail || '', defaultPassword]);
+      INSERT INTO jdhmd (id, stuid, name, depart, phone, mail, password, isAdmin, createAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+    `, [employeeId, stuid || cardNo, name, unit || '', phone || '', mail || '', defaultPassword, now]);
 
     return NextResponse.json({
       success: true,
@@ -74,63 +81,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: '添加失败，可能校园卡号已存在',
-    }, { status: 500 });
-  }
-}
-
-// PUT /api/admin/settings/members/[id] - 更新成员
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { name, unit, position, year, phone, cardNo, mail } = body;
-
-    // Extract ID from the URL
-    const url = new URL(request.url);
-    const id = url.pathname.split('/').slice(-2, -1)[0];
-
-    if (!name || !cardNo) {
-      return NextResponse.json({
-        success: false,
-        error: '姓名和校园卡号不能为空',
-      }, { status: 400 });
-    }
-
-    await query(`
-      UPDATE jdhmd
-      SET id = ?, name = ?, depart = ?, phone = ?, mail = ?
-      WHERE id = ?
-    `, [cardNo, name, unit || '', phone || '', mail || '', id]);
-
-    return NextResponse.json({
-      success: true,
-      message: '更新成功',
-    });
-  } catch (error) {
-    console.error('Error updating member:', error);
-    return NextResponse.json({
-      success: false,
-      error: '更新失败',
-    }, { status: 500 });
-  }
-}
-
-// DELETE /api/admin/settings/members/[id] - 删除成员
-export async function DELETE(request: NextRequest) {
-  try {
-    const url = new URL(request.url);
-    const id = url.pathname.split('/').slice(-1)[0];
-
-    await query(`DELETE FROM jdhmd WHERE id = ?`, [id]);
-
-    return NextResponse.json({
-      success: true,
-      message: '删除成功',
-    });
-  } catch (error) {
-    console.error('Error deleting member:', error);
-    return NextResponse.json({
-      success: false,
-      error: '删除失败',
     }, { status: 500 });
   }
 }
