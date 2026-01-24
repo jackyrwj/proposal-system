@@ -1,8 +1,8 @@
 // CDSP API 配置和签名工具
-
+// 注意：敏感信息从环境变量读取，不要直接写入代码
 const CDSP_CONFIG = {
-  appId: '2013533628873015298',
-  appSecret: '[CDSP_APP_SECRET]',
+  appId: process.env.CDSP_APP_ID || '',
+  appSecret: process.env.CDSP_APP_SECRET || '',
   baseUrl: 'https://cdsp.szu.edu.cn/cdsp/data-api/v2',
 };
 
@@ -146,8 +146,8 @@ async function getCdspHeadersForApp(appId: string, appSecret: string): Promise<H
  */
 export async function fetchDepartments(): Promise<DepartmentInfo[]> {
   // GG0002 使用旧的凭证
-  const OLD_APP_ID = '1963446784588480514';
-  const OLD_APP_SECRET = '[CDSP_OLD_APP_SECRET]';
+  const OLD_APP_ID = process.env.CDSP_OLD_APP_ID || '';
+  const OLD_APP_SECRET = process.env.CDSP_OLD_APP_SECRET || '';
 
   try {
     const headers = await getCdspHeadersForApp(OLD_APP_ID, OLD_APP_SECRET);
