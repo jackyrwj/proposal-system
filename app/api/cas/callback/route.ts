@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const CAS_SERVER = 'https://authserver.szu.edu.cn/authserver/';
-const SERVICE_URL = 'http://172.31.171.244:3000/api/cas/callback';
+const SERVICE_URL = process.env.NEXT_PUBLIC_SITE_URL + '/api/cas/callback';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
       // 查询数据库获取完整用户信息
       const { query } = await import('@/lib/db');
-      const users = await query<any[]>(`
+      const users: any[] = await query(`
         SELECT id, name, depart, phone, mail, stuid, isAdmin
         FROM jdhmd
         WHERE stuid = ? OR id = ?
@@ -119,9 +119,21 @@ export async function GET(request: NextRequest) {
     // 触发登录事件
     window.dispatchEvent(new Event('userLoggedIn'));
 
-    // 跳转到首页
+    // 获取跳转目标：优先使用 URL 参数 redirect，其次使用 sessionStorage，最后默认首页
+    const urlParams = new URLSearchParams(window.location.search);
+    let redirectUrl = urlParams.get('redirect');
+    if (!redirectUrl) {
+      redirectUrl = sessionStorage.getItem('loginRedirect');
+    }
+    if (!redirectUrl) {
+      redirectUrl = '/';
+    }
+    // 清除 sessionStorage 中的登录跳转目标
+    sessionStorage.removeItem('loginRedirect');
+
+    // 跳转到目标页面
     setTimeout(function() {
-      window.location.href = '/';
+      window.location.href = redirectUrl;
     }, 500);
   </script>
 </body>

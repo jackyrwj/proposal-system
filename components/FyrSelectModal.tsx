@@ -15,6 +15,7 @@ interface FyrSelectModalProps {
   onConfirm: (selected: Array<{ id: string; name: string; depart: string }>) => void;
   initialSelected?: Array<{ id: string; name: string; depart: string }>;
   excludeId?: string; // 排除的用户ID（用于排除提案人自己）
+  excludeConfirmedIds?: string[]; // 排除已确认的附议人ID列表
 }
 
 export default function FyrSelectModal({
@@ -22,7 +23,8 @@ export default function FyrSelectModal({
   onClose,
   onConfirm,
   initialSelected = [],
-  excludeId
+  excludeId,
+  excludeConfirmedIds = [],
 }: FyrSelectModalProps) {
   const [members, setMembers] = useState<JdhMember[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<Array<{ id: string; name: string; depart: string }>>([]);
@@ -174,6 +176,7 @@ export default function FyrSelectModal({
                 ) : (
                   members
                     .filter((member) => member.id !== excludeId) // 排除提案人自己
+                    .filter((member) => !excludeConfirmedIds.includes(member.id)) // 排除已确认的附议人
                     .map((member) => (
                     <tr
                       key={member.id}

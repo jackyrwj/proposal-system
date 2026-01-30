@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ArrowUp,
   ArrowDown,
+  Calendar,
 } from 'lucide-react';
 import {
   LineChart,
@@ -94,11 +95,40 @@ export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 时间筛选状态
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actualStartDate, setActualStartDate] = useState('');
+  const [actualEndDate, setActualEndDate] = useState('');
+
+  // 初始化默认日期范围（近12个月）
+  useEffect(() => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    setEndDate(formatDate(today));
+    setStartDate(formatDate(twelveMonthsAgo));
+    setActualEndDate(formatDate(today));
+    setActualStartDate(formatDate(twelveMonthsAgo));
+  }, []);
+
   useEffect(() => {
     async function fetchDashboardData() {
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/dashboard');
+        let url = '/api/admin/dashboard';
+        if (actualStartDate && actualEndDate) {
+          url += `?startDate=${actualStartDate}&endDate=${actualEndDate}`;
+        }
+        const res = await fetch(url);
         const json = await res.json();
         if (json.success) {
           setData(json.data);
@@ -110,7 +140,35 @@ export default function AdminDashboardPage() {
       }
     }
     fetchDashboardData();
-  }, []);
+  }, [actualStartDate, actualEndDate]);
+
+  // 应用日期筛选
+  const handleDateFilter = () => {
+    setActualStartDate(startDate);
+    setActualEndDate(endDate);
+  };
+
+  // 重置日期筛选
+  const handleResetDateFilter = () => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const defaultStart = formatDate(twelveMonthsAgo);
+    const defaultEnd = formatDate(today);
+
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
+    setActualStartDate(defaultStart);
+    setActualEndDate(defaultEnd);
+  };
 
   const getRelativeTime = (dateStr: string) => {
     const now = new Date();
@@ -177,13 +235,45 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">工作台</h1>
           <p className="text-gray-500 mt-1">数据总览与分析</p>
         </div>
-        <div className="text-sm text-gray-500" suppressHydrationWarning>
-          最后更新: <span suppressHydrationWarning>{new Date().toLocaleString('zh-CN')}</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          {/* 时间筛选 */}
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm">
+            <Calendar size={16} className="text-gray-400" />
+            <span className="text-sm text-gray-600">筛选时间：</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
+            />
+            <span className="text-gray-400">至</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
+            />
+            <button
+              onClick={handleDateFilter}
+              className="px-3 py-1 bg-[#1779DC] text-white text-sm rounded-lg hover:bg-[#2861AE] transition-colors"
+            >
+              筛选
+            </button>
+            <button
+              onClick={handleResetDateFilter}
+              className="px-3 py-1 text-gray-500 text-sm hover:text-gray-700 transition-colors"
+            >
+              重置
+            </button>
+          </div>
+          <div className="text-sm text-gray-500" suppressHydrationWarning>
+            最后更新: <span suppressHydrationWarning>{new Date().toLocaleString('zh-CN')}</span>
+          </div>
         </div>
       </div>
 

@@ -474,7 +474,7 @@ export default function MembersPage() {
                   {/* 编辑行展开 */}
                   {editingMemberId === member.id && (
                     <tr
-                      ref={(el) => editRowRefs.current[member.id] = el}
+                      ref={(el) => { editRowRefs.current[member.id] = el; }}
                       className="bg-blue-50/50"
                     >
                       <td colSpan={7} className="px-4 py-4">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getChinaTimeString } from '@/lib/db';
 import { sendProposalProcessNotification, getProcessStatusText } from '@/lib/wework';
 
 // PUT /api/admin/tajy/[id] - Update a proposal
@@ -30,7 +30,7 @@ export async function PUT(
         stuid: string | null;
         depart: string;
       }>(`
-        SELECT title, name, stuid, depart FROM tajy WHERE tajyId = ?
+        SELECT title, name, stuid, depart FROM tajy WHERE tajyId = ? AND deletedAt IS NULL
       `, [proposalId]);
       if (proposals && proposals.length > 0) {
         proposalInfo = proposals[0];
@@ -85,45 +85,6 @@ export async function PUT(
       WHERE tajyId = ?
     `, values);
 
-    // 发送审批进度通知（企微 + 站内信）
-    if (process !== undefined && proposalInfo) {
-      try {
-        // 获取提案人学号和cardId
-        let proposerStuid = proposalInfo.stuid;
-        let cardId = proposalInfo.stuid || proposalInfo.depart; // 优先用stuid作为cardId
-
-        if (!proposerStuid) {
-          // 如果没有 stuid，尝试从 jdhmd 表查询
-          const users = await query<{ stuid: string; id: string }>(`
-            SELECT stuid, id FROM jdhmd WHERE name = ? AND depart = ? LIMIT 1
-          `, [proposalInfo.name, proposalInfo.depart]);
-          if (users && users.length > 0) {
-            proposerStuid = users[0].stuid;
-            cardId = users[0].id;
-          }
-        }
-
-        if (proposerStuid) {
-          // 构建提案详情链接
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-          const proposalUrl = `${baseUrl}/proposals/${proposalId}`;
-          const proposalTitle = title || proposalInfo.title;
-          const statusText = getProcessStatusText(process);
-
-          await sendProposalProcessNotification(
-            proposerStuid,
-            cardId,
-            proposalTitle,
-            statusText,
-            proposalUrl
-          );
-        }
-      } catch (notificationError) {
-        console.error('Notification error:', notificationError);
-        // 通知失败不影响更新操作
-      }
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Proposal updated successfully',
@@ -153,14 +114,15 @@ export async function DELETE(
       }, { status: 400 });
     }
 
+    // 软删除提案（设置 deletedAt）
+    const timeStr = getChinaTimeString();
     await query(`
-      DELETE FROM tajy
-      WHERE tajyId = ?
-    `, [proposalId]);
+      UPDATE tajy SET deletedAt = ? WHERE tajyId = ?
+    `, [timeStr, proposalId]);
 
     return NextResponse.json({
       success: true,
-      message: 'Proposal deleted successfully',
+      message: '提案删除成功',
     });
   } catch (error) {
     console.error('Error deleting proposal:', error);

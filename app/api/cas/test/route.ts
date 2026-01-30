@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const CAS_SERVER = 'https://authserver.szu.edu.cn/authserver/';
-const SERVICE_URL = 'http://172.31.171.244:3000/api/cas/callback';
+const SERVICE_URL = process.env.NEXT_PUBLIC_SITE_URL + '/api/cas/callback';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

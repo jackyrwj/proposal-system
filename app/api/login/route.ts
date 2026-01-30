@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import crypto from 'crypto';
+import { decryptPassword } from '@/lib/password';
 
 // 登录类型：individual(个人) 或 department(集体)
 export async function POST(request: NextRequest) {
@@ -14,32 +14,43 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 计算密码的 MD5
-    const passwordHash = crypto.createHash('md5').update(password).digest('hex');
-
     if (loginType === 'department') {
       // 集体账号登录 - 查询 department 表
       const departments = await query<any[]>(`
-        SELECT departId, departName, account
+        SELECT departId, departName, account, password
         FROM department
-        WHERE account = ? AND password = ?
-      `, [username, passwordHash]);
+        WHERE account = ?
+      `, [username]);
 
       if (departments.length > 0) {
         const dept = departments[0] as any;
-        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
-        return NextResponse.json({
-          success: true,
-          token,
-          user: {
-            id: dept.departId,
-            name: dept.departName,
-            type: 'department',
-          },
-        });
+        const encryptedPassword = dept.password;
+
+        try {
+          // 解密存储的密码
+          const storedPassword = decryptPassword(encryptedPassword);
+          // 比对明文密码
+          if (storedPassword === password) {
+            const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
+            return NextResponse.json({
+              success: true,
+              token,
+              user: {
+                id: dept.departId,
+                name: dept.departName,
+                type: 'department',
+              },
+            });
+          }
+        } catch (error) {
+          console.error('Error decrypting password:', error);
+        }
       }
     } else {
-      // 个人账号登录 - 查询 jdhmd 表
+      // 个人账号登录 - 查询 jdhmd 表（仍使用 MD5）
+      const crypto = await import('crypto');
+      const passwordHash = crypto.createHash('md5').update(password).digest('hex');
+
       const users = await query<any[]>(`
         SELECT id, name, depart, phone, mail, stuid, isAdmin
         FROM jdhmd

@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
     const searchType = searchParams.get('type');
     const process = searchParams.get('process'); // 处理状态筛选
     const month = searchParams.get('month'); // 月份筛选 (YYYY-MM)
+    const startDate = searchParams.get('startDate'); // 开始日期 (YYYY-MM-DD)
+    const endDate = searchParams.get('endDate'); // 结束日期 (YYYY-MM-DD)
     const offset = (page - 1) * limit;
 
     let whereClause = '';
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
       params.push(processNum);
     }
 
-    // 处理月份筛选
+    // 处理月份筛选（优先级高于日期范围）
     if (month) {
       if (!whereClause) {
         whereClause = 'WHERE DATE_FORMAT(createAt, "%Y-%m") = ?';
@@ -64,6 +66,30 @@ export async function GET(request: NextRequest) {
         whereClause += ' AND DATE_FORMAT(createAt, "%Y-%m") = ?';
       }
       params.push(month);
+    }
+
+    // 处理日期范围筛选
+    if (startDate && endDate) {
+      if (!whereClause) {
+        whereClause = 'WHERE DATE(createAt) BETWEEN ? AND ?';
+      } else {
+        whereClause += ' AND DATE(createAt) BETWEEN ? AND ?';
+      }
+      params.push(startDate, endDate);
+    } else if (startDate) {
+      if (!whereClause) {
+        whereClause = 'WHERE DATE(createAt) >= ?';
+      } else {
+        whereClause += ' AND DATE(createAt) >= ?';
+      }
+      params.push(startDate);
+    } else if (endDate) {
+      if (!whereClause) {
+        whereClause = 'WHERE DATE(createAt) <= ?';
+      } else {
+        whereClause += ' AND DATE(createAt) <= ?';
+      }
+      params.push(endDate);
     }
 
     const proposals = await query<FormalProposalItem>(`

@@ -43,7 +43,7 @@ interface PolishResult {
 export default function SubmitPage() {
   const router = useRouter();
 
-  // Focus styles
+  // Focus styles and responsive styles
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -61,6 +61,33 @@ export default function SubmitPage() {
           opacity: 1;
           margin-top: '0';
         }
+      }
+      /* Prevent horizontal scrolling on mobile */
+      html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+        touch-action: pan-y pan-x pinch-zoom;
+        position: relative;
+      }
+      /* Prevent horizontal scroll at the root level */
+      #__next {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+      }
+      /* Prevent content overflow */
+      * {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      /* Ensure inputs and textareas don't overflow */
+      input, textarea, select, button {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      /* Prevent tables from causing horizontal scroll */
+      table {
+        max-width: 100%;
+        table-layout: fixed;
       }
       .diff-added {
         background: linear-gradient(90deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
@@ -81,6 +108,212 @@ export default function SubmitPage() {
         border-color: #1779DC !important;
         box-shadow: 0 0 0 3px rgba(23, 121, 220, 0.15) !important;
         background: white !important;
+      }
+      /* Responsive styles for submit page */
+      @media (max-width: 768px) {
+        .submit-hero {
+          padding: 24px 16px !important;
+        }
+        .submit-hero-title {
+          font-size: 24px !important;
+        }
+        .submit-hero-icon {
+          width: 60px !important;
+          height: 60px !important;
+        }
+        .submit-hero-icon svg {
+          size: 28px !important;
+        }
+        .submit-form-container {
+          margin: -30px auto 24px !important;
+          padding: 0 12px !important;
+        }
+        .submit-form {
+          padding: 20px 16px !important;
+          border-radius: 16px !important;
+        }
+        .submit-section-title {
+          font-size: 16px !important;
+          margin-bottom: 16px !important;
+        }
+        .submit-section-icon {
+          width: 40px !important;
+          height: 40px !important;
+        }
+        .submit-section-icon svg {
+          size: 18px !important;
+        }
+        .submit-grid-2 {
+          grid-template-columns: 1fr !important;
+          gap: 16px !important;
+        }
+        .submit-title-row {
+          flex-direction: column !important;
+          gap: 10px !important;
+        }
+        .submit-title-input {
+          width: 100% !important;
+        }
+        .submit-action-buttons {
+          padding: '14px 16px' !important;
+          flex-direction: column !important;
+          gap: 12px !important;
+        }
+        .submit-action-buttons button {
+          width: 100% !important;
+          justify-content: center !important;
+        }
+        .submit-info-box {
+          padding: 16px !important;
+        }
+        .submit-modal {
+          margin: 12px !important;
+          max-height: 90vh !important;
+          border-radius: 16px !important;
+          max-width: calc(100% - 24px) !important;
+        }
+        .submit-modal-header {
+          padding: 16px !important;
+        }
+        .submit-modal-content {
+          padding: 12px 16px !important;
+          max-height: 60vh !important;
+        }
+        .submit-sidebar {
+          width: 100% !important;
+          top: 0 !important;
+          border-radius: 0 !important;
+        }
+        .submit-sidebar-header {
+          padding: 16px !important;
+        }
+        .submit-sidebar-content {
+          padding: 16px !important;
+        }
+        .submit-sidebar-footer {
+          padding: 12px 16px !important;
+        }
+        /* 附议人选择按钮移动端适配 */
+        .submit-fyr-row {
+          flex-direction: column !important;
+        }
+        .submit-fyr-input {
+          width: 100% !important;
+          flex: none !important;
+        }
+        .submit-fyr-btn {
+          width: 100% !important;
+          flex: none !important;
+          padding: 14px 24px !important;
+        }
+        /* 类似提案弹窗移动端适配 */
+        .similar-proposal-item {
+          padding: 12px !important;
+        }
+        .similar-proposal-title {
+          font-size: 14px !important;
+        }
+        /* 提案详情弹窗移动端适配 */
+        .detail-modal-header {
+          padding: 16px !important;
+        }
+        .detail-modal-content {
+          padding: 16px !important;
+          max-height: 60vh !important;
+        }
+        /* 类似提案弹窗移动端适配 */
+        .similar-modal-overlay {
+          padding: 12px !important;
+        }
+        .similar-modal {
+          max-width: 90% !important;
+          width: 90% !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          max-height: 80vh !important;
+          border-radius: 16px !important;
+        }
+        .similar-modal .submit-modal-content {
+          max-height: 50vh !important;
+          padding: 12px 16px !important;
+        }
+        .similar-modal-header {
+          padding: 14px 16px !important;
+        }
+        .similar-modal-header h3 {
+          font-size: 15px !important;
+        }
+        .similar-proposal-item {
+          padding: 10px 12px !important;
+          box-sizing: border-box !important;
+        }
+        .similar-proposal-item p {
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        .similar-proposal-title {
+          font-size: 13px !important;
+          white-space: normal !important;
+          line-height: 1.4 !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        /* 提案详情弹窗移动端适配 */
+        .detail-modal-overlay {
+          padding: 12px !important;
+        }
+        .detail-modal {
+          max-width: 95% !important;
+          width: 95% !important;
+          max-height: 90vh !important;
+          border-radius: 16px !important;
+        }
+        .detail-modal-header {
+          padding: 14px 16px !important;
+        }
+        .detail-modal-header h3 {
+          font-size: 15px !important;
+        }
+        .detail-modal-content {
+          padding: 14px 16px !important;
+          max-height: 60vh !important;
+        }
+        /* 提交预览弹窗移动端适配 */
+        .preview-modal-overlay {
+          padding: 12px !important;
+        }
+        .preview-modal {
+          max-width: 95% !important;
+          width: 95% !important;
+          max-height: 90vh !important;
+          border-radius: 16px !important;
+        }
+        .preview-modal-header {
+          padding: 14px 16px !important;
+        }
+        .preview-modal-header h3 {
+          font-size: 15px !important;
+        }
+        .preview-modal-content {
+          padding: 14px 16px !important;
+          max-height: 60vh !important;
+        }
+        /* 弹窗内容文本溢出处理 */
+        .submit-modal-content {
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        .submit-modal-content p,
+        .submit-modal-content h4,
+        .submit-modal-content h5 {
+          max-width: 100% !important;
+          overflow-wrap: break-word !important;
+          word-break: break-word !important;
+        }
+        .submit-modal-content button {
+          max-width: 100% !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -206,6 +439,7 @@ export default function SubmitPage() {
   // 一键填表相关状态
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillSuccess, setAutoFillSuccess] = useState(false);
+  const [autoFillClicked, setAutoFillClicked] = useState(false); // 跟踪是否点击过一键填表
   // 提案详情弹窗相关状态
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailProposal, setDetailProposal] = useState<any>(null);
@@ -377,6 +611,7 @@ export default function SubmitPage() {
 
         // 显示成功动画
         setAutoFillSuccess(true);
+        setAutoFillClicked(true); // 标记用户已点击过一键填表
         setTimeout(() => setAutoFillSuccess(false), 2000);
       } else {
         alert(json.error || 'AI填表失败，请稍后重试');
@@ -759,7 +994,7 @@ export default function SubmitPage() {
   };
 
   return (
-    <div style={{ background: '#F0F7FF', minHeight: '100vh' }}>
+    <div style={{ background: '#F0F7FF', minHeight: '100vh', overflowX: 'hidden', maxWidth: '100vw' }}>
       {/* Success/Error Messages */}
       {submitSuccess && (
         <div style={{
@@ -805,7 +1040,7 @@ export default function SubmitPage() {
         onConfirm={handleDepartConfirm} initialSelected={selectedDepartList} />
 
       {/* Hero Section */}
-      <div style={{
+      <div className="submit-hero" style={{
         padding: '48px 0',
         background: 'linear-gradient(135deg, #1779DC 0%, #2861AE 100%)',
         position: 'relative',
@@ -825,7 +1060,7 @@ export default function SubmitPage() {
 
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto', padding: '40px 0 20px' }}>
-            <div style={{
+            <div className="submit-hero-icon" style={{
               width: '80px', height: '80px', borderRadius: '20px',
               background: 'rgba(255,255,255,0.15)',
               backdropFilter: 'blur(10px)',
@@ -836,7 +1071,7 @@ export default function SubmitPage() {
             }}>
               <Send size={40} style={{ color: 'white' }} />
             </div>
-            <h1 style={{
+            <h1 className="submit-hero-title" style={{
               fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: '800', color: 'white',
               marginBottom: '16px', lineHeight: 1.2
             }}>征集提案建议</h1>
@@ -849,20 +1084,20 @@ export default function SubmitPage() {
       </div>
 
       {/* Form Container */}
-      <div style={{ maxWidth: '900px', margin: '-50px auto 48px', padding: '0 24px', position: 'relative', zIndex: 2 }}>
-        <form onSubmit={handleSubmit} style={{
+      <div className="submit-form-container" style={{ maxWidth: '900px', margin: '-50px auto 48px', padding: '0 24px', position: 'relative', zIndex: 2, overflowX: 'hidden' }}>
+        <form className="submit-form" onSubmit={handleSubmit} style={{
           background: 'white', borderRadius: '24px',
           boxShadow: '0 4px 20px rgba(23, 121, 220, 0.08), 0 0 0 1px rgba(23, 121, 220, 0.05)',
-          padding: '32px'
+          padding: '32px', overflowX: 'hidden'
         }}>
           {/* Section 1 */}
           <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
+            <h3 className="submit-section-title" style={{
               fontSize: '20px', fontWeight: 'bold', color: '#1F2937',
               marginBottom: '20px', paddingBottom: '12px', borderBottom: '2px solid #F3F4F6',
               display: 'flex', alignItems: 'center', gap: '12px'
             }}>
-              <div style={{
+              <div className="submit-section-icon" style={{
                 width: '48px', height: '48px', borderRadius: '12px',
                 background: 'linear-gradient(135deg, #1779DC 0%, #2861AE 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -876,8 +1111,8 @@ export default function SubmitPage() {
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                 * 提案建议标题：
               </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <input type="text" required value={formData.title}
+              <div className="submit-title-row" style={{ display: 'flex', gap: '12px' }}>
+                <input className="submit-title-input" type="text" required value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   style={{
                     flex: 1, padding: '14px 18px',
@@ -888,12 +1123,14 @@ export default function SubmitPage() {
                     background: '#F9FAFB'
                   }}
                 />
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={handleSearchSimilar}
                   disabled={searchingSimilar || !formData.title.trim()}
+                  className="mobile-full-width"
                   style={{
-                    padding: '0 20px',
+                    padding: '0 16px',
                     background: searchingSimilar ? '#9CA3AF' : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
                     color: 'white',
                     borderRadius: '14px',
@@ -903,9 +1140,11 @@ export default function SubmitPage() {
                     fontSize: '14px',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '6px',
                     whiteSpace: 'nowrap',
                     opacity: searchingSimilar || !formData.title.trim() ? 0.6 : 1,
+                    minWidth: '100px',
                   }}
                 >
                   {searchingSimilar ? (
@@ -913,14 +1152,14 @@ export default function SubmitPage() {
                   ) : (
                     <Search size={16} />
                   )}
-                  {searchingSimilar ? '搜索中...' : '查看类似提案'}
+                  {searchingSimilar ? '搜索中...' : '查看历史'}
                 </button>
                 <button
                   type="button"
                   onClick={handleAutoFill}
                   disabled={autoFilling || !formData.title.trim()}
                   style={{
-                    padding: '0 20px',
+                    padding: '0 16px',
                     background: autoFilling ? '#9CA3AF' : 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
                     color: 'white',
                     borderRadius: '14px',
@@ -940,12 +1179,13 @@ export default function SubmitPage() {
                   ) : (
                     <Wand2 size={16} />
                   )}
-                  {autoFilling ? '填表中...' : '一键填表'}
+                  {autoFilling ? '填表中...' : 'AI填表'}
                 </button>
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div className="submit-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
                   * 提案类型：
@@ -1052,12 +1292,12 @@ export default function SubmitPage() {
 
           {/* Section 2 */}
           <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
+            <h3 className="submit-section-title" style={{
               fontSize: '20px', fontWeight: 'bold', color: '#1F2937',
               marginBottom: '20px', paddingBottom: '12px', borderBottom: '2px solid #F3F4F6',
               display: 'flex', alignItems: 'center', gap: '12px'
             }}>
-              <div style={{
+              <div className="submit-section-icon" style={{
                 width: '48px', height: '48px', borderRadius: '12px',
                 background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1298,12 +1538,12 @@ export default function SubmitPage() {
 
           {/* Section 3 */}
           <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
+            <h3 className="submit-section-title" style={{
               fontSize: '20px', fontWeight: 'bold', color: '#1F2937',
               marginBottom: '20px', paddingBottom: '12px', borderBottom: '2px solid #F3F4F6',
               display: 'flex', alignItems: 'center', gap: '12px'
             }}>
-              <div style={{
+              <div className="submit-section-icon" style={{
                 width: '48px', height: '48px', borderRadius: '12px',
                 background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1313,7 +1553,7 @@ export default function SubmitPage() {
               提案人信息
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div className="submit-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                   * {formData.type === 2 ? '所属单位：' : '姓名：'}
@@ -1352,7 +1592,7 @@ export default function SubmitPage() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="submit-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div id="email-field">
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                   邮箱：
@@ -1431,12 +1671,12 @@ export default function SubmitPage() {
           {/* Section 4: Supporters */}
           {formData.type === 1 && (
             <div style={{ marginBottom: '32px' }}>
-              <h3 style={{
+              <h3 className="submit-section-title" style={{
                 fontSize: '20px', fontWeight: 'bold', color: '#1F2937',
                 marginBottom: '20px', paddingBottom: '12px', borderBottom: '2px solid #F3F4F6',
                 display: 'flex', alignItems: 'center', gap: '12px'
               }}>
-                <div style={{
+                <div className="submit-section-icon" style={{
                   width: '48px', height: '48px', borderRadius: '12px',
                   background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1447,11 +1687,14 @@ export default function SubmitPage() {
               </h3>
 
               <div id="fyr-field">
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                <div className="submit-fyr-row" style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   <input type="text" readOnly onClick={() => setFyrModalOpen(true)}
                     value={formData.fyr} placeholder="单击选择附议人"
+                    className="submit-fyr-input"
                     style={{
-                      flex: 1, padding: '14px 18px',
+                      flex: '1 1 200px',
+                      minWidth: '0',
+                      padding: '14px 18px',
                       border: fieldErrors.fyr ? '2px solid #EF4444' : '2px solid #E5E7EB',
                       borderRadius: '14px',
                       fontSize: '16px', outline: 'none', cursor: 'pointer',
@@ -1465,13 +1708,17 @@ export default function SubmitPage() {
                       setFieldErrors({ ...fieldErrors, fyr: undefined });
                     }
                   }}
+                    className="submit-fyr-btn"
                     style={{
-                      padding: '14px 24px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                      flex: '0 0 auto',
+                      padding: '14px 24px',
+                      background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                       color: 'white', borderRadius: '14px', border: 'none', cursor: 'pointer',
                       fontWeight: '600', fontSize: '14px',
-                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                      whiteSpace: 'nowrap',
                     }}>
-                    选择
+                    选择附议人
                   </button>
                 </div>
 
@@ -1543,7 +1790,7 @@ export default function SubmitPage() {
           )}
 
           {/* Buttons */}
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', paddingTop: '16px', borderTop: '2px solid #F3F4F6' }}>
+          <div className="submit-action-buttons" style={{ display: 'flex', gap: '16px', justifyContent: 'center', paddingTop: '16px', borderTop: '2px solid #F3F4F6' }}>
             <button type="button" onClick={() => router.back()}
               style={{
                 padding: '14px 32px', border: '2px solid #E5E7EB', borderRadius: '14px',
@@ -1575,7 +1822,7 @@ export default function SubmitPage() {
         </form>
 
         {/* 征集提案建议的要求 */}
-        <div style={{
+        <div className="submit-info-box" style={{
           marginTop: '32px',
           background: 'white',
           borderRadius: '16px',
@@ -1630,29 +1877,33 @@ export default function SubmitPage() {
 
         {/* 类似提案弹窗 */}
         {showSimilarModal && (
-          <div style={{
+          <div className="similar-modal-overlay" style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0, 0, 0, 0.5)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px'
+            padding: '20px',
+            overflow: 'hidden'
           }} onClick={() => setShowSimilarModal(false)}>
-            <div style={{
+            <div className="similar-modal submit-modal" style={{
               background: 'white',
               borderRadius: '20px',
               maxWidth: '600px',
               width: '100%',
               maxHeight: '80vh',
               overflow: 'hidden',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              flexDirection: 'column'
             }} onClick={(e) => e.stopPropagation()}>
               {/* 头部 */}
-              <div style={{
+              <div className="submit-modal-header similar-modal-header" style={{
                 padding: '20px 24px',
                 borderBottom: '1px solid #F3F4F6',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                flexShrink: 0
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
@@ -1665,10 +1916,10 @@ export default function SubmitPage() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>
-                      类似提案
+                      历史提案
                     </h3>
                     <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
-                      找到 {similarProposals.length} 条相似的提案
+                      找到 {similarProposals.length} 条相似提案
                     </p>
                   </div>
                 </div>
@@ -1688,7 +1939,12 @@ export default function SubmitPage() {
               </div>
 
               {/* 内容 */}
-              <div style={{ padding: '16px 24px', maxHeight: '60vh', overflowY: 'auto' }}>
+              <div className="submit-modal-content" style={{
+                padding: '16px 24px',
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto'
+              }}>
                 {similarProposals.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#6B7280' }}>
                     <Search size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
@@ -1721,6 +1977,7 @@ export default function SubmitPage() {
                           key={`${proposalType}-${proposal.tajyId}`}
                           type="button"
                           onClick={() => handleViewProposal(proposal)}
+                          className="similar-proposal-item"
                           style={{
                             display: 'block',
                             width: '100%',
@@ -1730,7 +1987,9 @@ export default function SubmitPage() {
                             background: '#F9FAFB',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            maxWidth: '100%',
+                            boxSizing: 'border-box'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background = '#F3F4F6';
@@ -1791,7 +2050,7 @@ export default function SubmitPage() {
                                   </span>
                                 )}
                               </div>
-                              <p style={{
+                              <p className="similar-proposal-title" style={{
                                 fontSize: '15px',
                                 fontWeight: '500',
                                 color: '#1F2937',
@@ -1854,7 +2113,7 @@ export default function SubmitPage() {
 
         {/* 提案详情弹窗 */}
         {showDetailModal && (
-          <div style={{
+          <div className="detail-modal-overlay" style={{
             position: 'fixed',
             inset: 0,
             background: 'rgba(0, 0, 0, 0.5)',
@@ -1866,7 +2125,7 @@ export default function SubmitPage() {
           }} onClick={(e) => {
             if (e.target === e.currentTarget) setShowDetailModal(false);
           }}>
-            <div style={{
+            <div className="submit-modal detail-modal" style={{
               background: 'white',
               borderRadius: '20px',
               maxWidth: '700px',
@@ -1876,7 +2135,7 @@ export default function SubmitPage() {
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
             }}>
               {/* 头部 */}
-              <div style={{
+              <div className="submit-modal-header detail-modal-header" style={{
                 padding: '20px 24px',
                 borderBottom: '1px solid #F3F4F6',
                 display: 'flex',
@@ -1918,7 +2177,7 @@ export default function SubmitPage() {
               </div>
 
               {/* 内容 */}
-              <div style={{ padding: '24px', maxHeight: '65vh', overflowY: 'auto' }}>
+              <div className="submit-modal-content detail-modal-content" style={{ padding: '24px', maxHeight: '65vh', overflowY: 'auto', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {detailLoading ? (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
                     <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 16px', color: '#1779DC' }} />
@@ -1928,10 +2187,10 @@ export default function SubmitPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {/* 标题 */}
                     <div>
-                      <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>
+                      <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {detailProposal.title}
                       </h4>
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#6B7280' }}>
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#6B7280', flexWrap: 'wrap' }}>
                         <span>{detailProposal.createAt || ''}</span>
                         {detailProposal.name && <span>提案人: {detailProposal.name}</span>}
                         {detailProposal.depart && <span>部门: {detailProposal.depart}</span>}
@@ -1944,7 +2203,7 @@ export default function SubmitPage() {
                         <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                           提案概述
                         </h5>
-                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {detailProposal.brief}
                         </p>
                       </div>
@@ -1956,7 +2215,7 @@ export default function SubmitPage() {
                         <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                           情况分析
                         </h5>
-                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {detailProposal.analysis || detailProposal.reason}
                         </p>
                       </div>
@@ -1968,7 +2227,7 @@ export default function SubmitPage() {
                         <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                           具体建议
                         </h5>
-                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {detailProposal.suggest}
                         </p>
                       </div>
@@ -1980,7 +2239,7 @@ export default function SubmitPage() {
                         <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                           办理答复
                         </h5>
-                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#EEF2FF', padding: '12px', borderRadius: '8px', border: '1px solid #C7D2FE' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#EEF2FF', padding: '12px', borderRadius: '8px', border: '1px solid #C7D2FE', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {detailProposal.reply}
                         </p>
                       </div>
@@ -2042,7 +2301,7 @@ export default function SubmitPage() {
 
         {/* 提交预览弹窗 */}
         {showPreviewModal && (
-          <div style={{
+          <div className="preview-modal-overlay" style={{
             position: 'fixed',
             inset: 0,
             background: 'rgba(0, 0, 0, 0.5)',
@@ -2054,7 +2313,7 @@ export default function SubmitPage() {
           }} onClick={(e) => {
             if (e.target === e.currentTarget) setShowPreviewModal(false);
           }}>
-            <div style={{
+            <div className="submit-modal preview-modal" style={{
               background: 'white',
               borderRadius: '20px',
               maxWidth: '700px',
@@ -2066,7 +2325,7 @@ export default function SubmitPage() {
               flexDirection: 'column'
             }}>
               {/* 头部 */}
-              <div style={{
+              <div className="submit-modal-header" style={{
                 padding: '20px 24px',
                 borderBottom: '1px solid #F3F4F6',
                 display: 'flex',
@@ -2106,14 +2365,14 @@ export default function SubmitPage() {
               </div>
 
               {/* 内容 */}
-              <div style={{ padding: '24px', flex: '1', minHeight: 0, overflowY: 'auto' }}>
+              <div className="submit-modal-content preview-modal-content" style={{ padding: '24px', flex: '1', minHeight: 0, overflowY: 'auto', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* 标题 */}
                   <div>
-                    <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>
+                    <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {formData.title}
                     </h4>
-                    <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#6B7280' }}>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#6B7280', flexWrap: 'wrap' }}>
                       <span>{formData.type === 1 ? '个人提案' : '集体提案'}</span>
                       {categories.find(c => c.tajzlxm === formData.category) && (
                         <span>分类: {categories.find(c => c.tajzlxm === formData.category)!.tajzlxm}</span>
@@ -2127,7 +2386,7 @@ export default function SubmitPage() {
                       <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                         提案概述
                       </h5>
-                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {formData.brief}
                       </p>
                     </div>
@@ -2139,7 +2398,7 @@ export default function SubmitPage() {
                       <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                         情况分析
                       </h5>
-                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {formData.analysis}
                       </p>
                     </div>
@@ -2151,7 +2410,7 @@ export default function SubmitPage() {
                       <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                         具体建议
                       </h5>
-                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+                      <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', background: '#F9FAFB', padding: '12px', borderRadius: '8px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {formData.suggest}
                       </p>
                     </div>
@@ -2162,7 +2421,7 @@ export default function SubmitPage() {
                     <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
                       提案人信息
                     </h5>
-                    <div style={{ background: '#F9FAFB', padding: '12px', borderRadius: '8px', fontSize: '14px', color: '#4B5563' }}>
+                    <div style={{ background: '#F9FAFB', padding: '12px', borderRadius: '8px', fontSize: '14px', color: '#4B5563', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       <p style={{ margin: '4px 0' }}>姓名: {formData.proposer}</p>
                       <p style={{ margin: '4px 0' }}>所属学院/部门: {user?.depart || ''}</p>
                       {formData.relatedDepartments && <p style={{ margin: '4px 0' }}>相关职能部门: {formData.relatedDepartments}</p>}
@@ -2238,6 +2497,25 @@ export default function SubmitPage() {
                   </div>
                 )}
 
+                {/* AI 生成警告提示 */}
+                {autoFillClicked && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    background: '#FEF2F2',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: '#DC2626',
+                    border: '1px solid #FECACA',
+                    marginTop: '4px'
+                  }}>
+                    <AlertCircle size={16} />
+                    <span>AI生成的结果仅供参考，请仔细检查</span>
+                  </div>
+                )}
+
                 {/* 按钮组 */}
                 <div style={{
                   display: 'flex',
@@ -2310,7 +2588,7 @@ export default function SubmitPage() {
               }}
             />
             {/* 侧边栏 */}
-            <div style={{
+            <div className="submit-sidebar" style={{
               position: 'fixed',
               top: '102px',
               right: 0,
@@ -2325,7 +2603,7 @@ export default function SubmitPage() {
               transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)',
             }}>
               {/* 头部 */}
-              <div style={{
+              <div className="submit-sidebar-header" style={{
                 padding: '20px 24px',
                 borderBottom: '1px solid #E5E7EB',
                 background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
@@ -2392,7 +2670,7 @@ export default function SubmitPage() {
               </div>
 
               {/* 内容区域 - 分段显示修改 */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+              <div className="submit-sidebar-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
                   修改建议（{polishResult.segments.filter(s => s.hasChanges).length} 处修改）
                 </h4>
@@ -2500,7 +2778,7 @@ export default function SubmitPage() {
               </div>
 
               {/* 底部关闭按钮 */}
-              <div style={{
+              <div className="submit-sidebar-footer" style={{
                 padding: '16px 20px',
                 borderTop: '1px solid #E5E7EB',
                 background: '#F9FAFB',

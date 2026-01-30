@@ -20,8 +20,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status'); // 可选筛选：0=未审核, 1=已立案, 2=不立案, 3=处理中
+    const startDate = searchParams.get('startDate'); // 可选筛选：开始日期
+    const endDate = searchParams.get('endDate'); // 可选筛选：结束日期
 
-    // 获取所有未被合并的提案建议（可以根据状态筛选）
+    // 获取所有未被合并的提案建议（可以根据状态和日期筛选）
     let whereClause = 'WHERE tajyId NOT IN (';
     whereClause += '  SELECT CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(zsta.sourceTajyIds, ",", numbers.n), ",", -1) AS UNSIGNED)';
     whereClause += '  FROM zsta';
@@ -36,6 +38,16 @@ export async function GET(request: NextRequest) {
     if (status !== null && status !== '' && !isNaN(parseInt(status))) {
       whereClause += ' AND process = ?';
       params.push(parseInt(status));
+    }
+
+    // 可选的日期范围筛选
+    if (startDate && startDate.trim() !== '') {
+      whereClause += ' AND DATE(createAt) >= ?';
+      params.push(startDate);
+    }
+    if (endDate && endDate.trim() !== '') {
+      whereClause += ' AND DATE(createAt) <= ?';
+      params.push(endDate);
     }
 
     const proposals = await query<any[]>(`

@@ -25,10 +25,22 @@ export async function GET(request: NextRequest) {
     // 解码 URL 编码的 cookie 值
     const user = JSON.parse(decodeURIComponent(userStr));
     const cardId = user.id;
+    const stuid = user.stuid;
+
+    // 查询条件：使用 cardId 或 stuid 匹配未读消息
+    let whereClause = 'WHERE (cardId = ?';
+    const params: any[] = [cardId];
+
+    // 如果用户有 stuid，也匹配 stuid
+    if (stuid && stuid !== cardId) {
+      whereClause += ' OR cardId = ?';
+      params.push(stuid);
+    }
+    whereClause += ') AND hasRead = 0';
 
     const [result] = await query<{ count: number }[]>(`
-      SELECT COUNT(*) as count FROM message WHERE cardId = ? AND hasRead = 0
-    `, [cardId]);
+      SELECT COUNT(*) as count FROM message ${whereClause}
+    `, params);
 
     return NextResponse.json({
       success: true,

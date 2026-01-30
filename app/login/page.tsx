@@ -23,8 +23,12 @@ function LoginForm() {
       sessionStorage.setItem('loginRedirect', redirect);
     }
     const CAS_SERVER = 'https://authserver.szu.edu.cn/authserver/';
-    const SERVICE_URL = 'http://172.31.171.244:3000/api/cas/callback';
-    window.location.href = `${CAS_SERVER}login?service=${encodeURIComponent(SERVICE_URL)}`;
+    const SERVICE_URL = process.env.NEXT_PUBLIC_SITE_URL + '/api/cas/callback';
+    // 将 redirect 参数传递给回调 URL，以便在回调中获取
+    const callbackUrlWithRedirect = redirect
+      ? `${SERVICE_URL}?redirect=${encodeURIComponent(redirect)}`
+      : SERVICE_URL;
+    window.location.href = `${CAS_SERVER}login?service=${encodeURIComponent(callbackUrlWithRedirect)}`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -51,7 +55,11 @@ function LoginForm() {
         document.cookie = `user=${encodeURIComponent(JSON.stringify(json.user))}; path=/; max-age=${7 * 24 * 60 * 60}`;
         document.cookie = `token=${json.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
         window.dispatchEvent(new Event('userLoggedIn'));
-        router.push('/');
+
+        // 获取跳转目标：优先使用 URL 参数 redirect，其次使用 sessionStorage，最后默认首页
+        const redirect = searchParams.get('redirect') || sessionStorage.getItem('loginRedirect') || '/';
+        sessionStorage.removeItem('loginRedirect');
+        router.push(redirect);
       } else {
         setError(json.error || '登录失败');
       }

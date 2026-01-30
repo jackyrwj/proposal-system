@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       result = await sendTemplateMessage(
         'CUURWNXKM1', // 附议邀请模板ID
         [studentID],
-        ['测试提案标题', '关于校园建设的建议', 'http://localhost:3000/proposals/1']
+        ['测试提案标题', '关于校园建设的建议', process.env.NEXT_PUBLIC_SITE_URL + '/proposals/1']
       );
     } else {
       // 默认发送测试模板消息

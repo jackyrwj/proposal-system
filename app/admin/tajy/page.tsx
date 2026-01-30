@@ -25,6 +25,8 @@ import {
   Undo,
   FileText,
   Bell,
+  Printer,
+  CalendarDays,
 } from 'lucide-react';
 import { Proposal, PROCESS_STATUS_MAP, PROPOSAL_TYPE_MAP, PROPOSAL_PROCESS_STATUS_MAP } from '@/types';
 
@@ -82,6 +84,12 @@ export default function AdminTajyPage() {
   const [actualKeyword, setActualKeyword] = useState('');
   const [searchType, setSearchType] = useState('1');
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  // 时间筛选状态
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actualStartDate, setActualStartDate] = useState('');
+  const [actualEndDate, setActualEndDate] = useState('');
 
   // AI 相关状态
   const [aiGroups, setAiGroups] = useState<MergeGroup[]>([]);
@@ -155,9 +163,29 @@ export default function AdminTajyPage() {
 
   const pageSize = 20;
 
+  // 初始化默认日期范围（近12个月）
+  useEffect(() => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    // 格式化日期 YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    setEndDate(formatDate(today));
+    setStartDate(formatDate(twelveMonthsAgo));
+    setActualEndDate(formatDate(today));
+    setActualStartDate(formatDate(twelveMonthsAgo));
+  }, []);
+
   useEffect(() => {
     fetchProposals();
-  }, [currentPage, actualKeyword, searchType]);
+  }, [currentPage, actualKeyword, searchType, actualStartDate, actualEndDate]);
 
   const fetchProposals = async () => {
     setLoading(true);
@@ -166,6 +194,13 @@ export default function AdminTajyPage() {
       if (actualKeyword) {
         const typeMap: Record<string, string> = { '1': 'title', '2': 'code', '3': 'depart' };
         url += `&keyword=${encodeURIComponent(actualKeyword)}&type=${typeMap[searchType] || 'title'}`;
+      }
+      // 添加日期范围参数
+      if (actualStartDate) {
+        url += `&startDate=${actualStartDate}`;
+      }
+      if (actualEndDate) {
+        url += `&endDate=${actualEndDate}`;
       }
       const res = await fetch(url, {
         cache: 'no-store',
@@ -187,10 +222,53 @@ export default function AdminTajyPage() {
     setCurrentPage(1);
   };
 
+  // 应用日期筛选
+  const handleDateFilter = () => {
+    setActualStartDate(startDate);
+    setActualEndDate(endDate);
+    setCurrentPage(1);
+  };
+
+  // 重置日期筛选
+  const handleResetDateFilter = () => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const defaultStart = formatDate(twelveMonthsAgo);
+    const defaultEnd = formatDate(today);
+
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
+    setActualStartDate(defaultStart);
+    setActualEndDate(defaultEnd);
+    setCurrentPage(1);
+  };
+
   const fetchAiRecommendations = async () => {
     setAnalyzing(true);
     try {
-      const res = await fetch('/api/admin/tajy/analyze');
+      // 传递当前筛选的日期范围参数
+      let url = '/api/admin/tajy/analyze';
+      const params = new URLSearchParams();
+      if (actualStartDate) {
+        params.set('startDate', actualStartDate);
+      }
+      if (actualEndDate) {
+        params.set('endDate', actualEndDate);
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success && json.data?.groups) {
         setAiGroups(json.data.groups);
@@ -623,6 +701,17 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
     }
   };
 
+  // 批量打印选中的提案
+  const handleBatchPrint = () => {
+    if (selectedItems.length === 0) {
+      alert('请先选择要打印的提案');
+      return;
+    }
+    // 跳转到批量打印页面
+    const ids = selectedItems.join(',');
+    window.open(`/print/batch?tajy=${ids}`, '_blank');
+  };
+
   // 打开 AI 合并弹窗
   const openMergeDialog = async (proposalsToMerge?: Proposal[]) => {
     const selectedProposals = proposalsToMerge || proposals.filter(p => selectedItems.includes(p.tajyId));
@@ -784,6 +873,14 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
           <p className="text-gray-500 mt-1">共 {totalProposals} 条提案</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleBatchPrint}
+            disabled={selectedItems.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+          >
+            <Printer size={18} />
+            打印所选 ({selectedItems.length})
+          </button>
           <button
             onClick={handleBatchDelete}
             disabled={selectedItems.length === 0}
@@ -947,7 +1044,8 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
 
       {/* Search Bar */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex gap-3 items-center">
+        {/* 关键词搜索 */}
+        <div className="flex gap-3 items-center mb-4">
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -972,6 +1070,44 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
             搜索
           </button>
         </div>
+        {/* 日期筛选 */}
+        <div className="flex gap-3 items-center flex-wrap">
+          <div className="flex items-center gap-2 text-gray-600">
+            <CalendarDays size={16} />
+            <span className="text-sm font-medium">提交时间：</span>
+          </div>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1779DC] focus:border-transparent text-sm"
+          />
+          <span className="text-gray-400">至</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1779DC] focus:border-transparent text-sm"
+          />
+          <button
+            onClick={handleDateFilter}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            筛选
+          </button>
+          <button
+            onClick={handleResetDateFilter}
+            className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors text-sm"
+          >
+            重置
+          </button>
+          {/* 显示当前筛选条件 */}
+          {(actualStartDate || actualEndDate) && (
+            <span className="text-sm text-[#1779DC] ml-auto">
+              当前筛选: {actualStartDate} 至 {actualEndDate}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Data Table */}
@@ -994,6 +1130,7 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">部门</th>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">类型</th>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">处理状态</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">是否确认</th>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">提交时间</th>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">操作</th>
               </tr>
@@ -1069,6 +1206,19 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
                           </span>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">{getStatusBadge(proposal.process)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          {proposal.ownerConfirmed === 1 ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium whitespace-nowrap">
+                              <CheckCircle size={12} />
+                              已确认
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs font-medium whitespace-nowrap">
+                              <Clock size={12} />
+                              未确认
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">{proposal.createAt || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -1147,6 +1297,19 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
                               {PROPOSAL_PROCESS_STATUS_MAP[source.process] || '未知'}
                             </span>
                           </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {source.ownerConfirmed === 1 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs whitespace-nowrap">
+                                <CheckCircle size={10} />
+                                已确认
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs whitespace-nowrap">
+                                <Clock size={10} />
+                                未确认
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{source.createAt || '-'}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-1 pl-4">
@@ -1167,7 +1330,7 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     暂无数据
                   </td>
                 </tr>

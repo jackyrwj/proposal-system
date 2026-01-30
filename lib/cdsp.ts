@@ -43,6 +43,7 @@ export async function getCdspHeaders(): Promise<HeadersInit> {
  */
 export interface TeacherInfo {
   '校园卡号'?: string;     // 校园卡号
+  'XYH'?: string;          // 校园卡号（也可能是XYH格式）
   '职工号'?: string;       // 职工号
   '姓名'?: string;         // 姓名
   '标准单位代码'?: string;  // 标准单位代码
@@ -60,7 +61,24 @@ export async function searchTeacher(keyword: string): Promise<TeacherInfo[]> {
   }
 
   try {
-    const headers = await getCdspHeaders();
+    // 搜索接口使用特定的 appId 和 appSecret
+    const SEARCH_APP_ID = '2013533628873015298';
+    const SEARCH_APP_SECRET = '699733041e0f4da3aff500e0cde0c536';
+
+    // 生成签名
+    const timestamp = String(Date.now());
+    const plainText = SEARCH_APP_ID + SEARCH_APP_SECRET + timestamp;
+    const crypto = await import('crypto');
+    const md5Hash = crypto.createHash('md5').update(plainText).digest('hex');
+    const sign = Buffer.from(md5Hash).toString('base64');
+
+    const headers = {
+      'appId': SEARCH_APP_ID,
+      'Content-Type': 'application/json',
+      'timestamp': timestamp,
+      'sign': sign,
+    };
+
     const trimmedKeyword = keyword.trim();
 
     // 使用中文字段名构建 OData filter
@@ -74,18 +92,24 @@ export async function searchTeacher(keyword: string): Promise<TeacherInfo[]> {
 
     const fullUrl = `${CDSP_CONFIG.baseUrl}/JZG0001?$filter=${encodeURIComponent(filterParam)}`;
 
+    console.log('[CDSP] 搜索请求 URL:', fullUrl);
+
     const response = await fetch(fullUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
     });
 
+    console.log('[CDSP] API 响应状态:', response.status, response.statusText);
+
     if (!response.ok) {
-      console.error('[CDSP] API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('[CDSP] API error response:', errorText);
       return [];
     }
 
     const data = await response.json();
+    console.log('[CDSP] API 返回数据:', JSON.stringify(data).substring(0, 500));
     return (data.value || []) as TeacherInfo[];
   } catch (error) {
     console.error('[CDSP] Search teacher error:', error);
@@ -146,8 +170,8 @@ async function getCdspHeadersForApp(appId: string, appSecret: string): Promise<H
  */
 export async function fetchDepartments(): Promise<DepartmentInfo[]> {
   // GG0002 使用旧的凭证
-  const OLD_APP_ID = process.env.CDSP_OLD_APP_ID || '';
-  const OLD_APP_SECRET = process.env.CDSP_OLD_APP_SECRET || '';
+  const OLD_APP_ID = process.env.CDSP_OLD_APP_ID || '1963446784588480514';
+  const OLD_APP_SECRET = process.env.CDSP_OLD_APP_SECRET || 'e4769d543a154c038ca0c08697fe7b01';
 
   try {
     const headers = await getCdspHeadersForApp(OLD_APP_ID, OLD_APP_SECRET);
@@ -168,6 +192,56 @@ export async function fetchDepartments(): Promise<DepartmentInfo[]> {
     return (data.value || []) as DepartmentInfo[];
   } catch (error) {
     console.error('[CDSP] Fetch departments error:', error);
+    return [];
+  }
+}
+
+/**
+ * 单位信息接口返回类型 (GG0008)
+ */
+export interface UnitInfo {
+  'WID'?: string;              // 唯一标识
+  '单位代码'?: string;          // 单位代码
+  '单位名称'?: string;          // 单位名称
+  '隶属单位代码'?: string;      // 隶属单位代码
+  '单位层次'?: number;          // 单位层次
+  '单位类别代码'?: string;      // 单位类别代码
+  '单位类别'?: string;          // 单位类别
+  '排序'?: number;              // 排序
+  '是否使用'?: string;          // 是否使用
+  '创建日期'?: string;          // 创建日期
+}
+
+/**
+ * 从 CDSP API 获取所有单位信息 (GG0008)
+ * GG0008 返回更详细的单位/部门信息
+ * 只获取单位层次为2的记录（即职能部门）
+ */
+export async function fetchUnitsFromGG0008(): Promise<UnitInfo[]> {
+  // GG0008 使用旧的凭证
+  const OLD_APP_ID = process.env.CDSP_OLD_APP_ID || '1963446784588480514';
+  const OLD_APP_SECRET = process.env.CDSP_OLD_APP_SECRET || 'e4769d543a154c038ca0c08697fe7b01';
+
+  try {
+    const headers = await getCdspHeadersForApp(OLD_APP_ID, OLD_APP_SECRET);
+    // 添加过滤条件：单位层次 eq 2（职能部门）
+    const url = `${CDSP_CONFIG.baseUrl}/GG0008?$filter=单位层次 eq 2`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.error('[CDSP] GG0008 API error:', response.status, response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    return (data.value || []) as UnitInfo[];
+  } catch (error) {
+    console.error('[CDSP] Fetch units error:', error);
     return [];
   }
 }

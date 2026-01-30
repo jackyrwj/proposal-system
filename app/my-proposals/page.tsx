@@ -24,10 +24,59 @@ export default function MyProposalsPage() {
     const style = document.createElement('style');
     style.textContent = `
       @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      /* Prevent horizontal scrolling on mobile */
+      html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+        touch-action: pan-y pan-x pinch-zoom;
+        position: relative;
+      }
+      /* Prevent horizontal scroll at the root level */
+      #__next {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+      }
+      /* Prevent content overflow */
+      * {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      /* Ensure inputs and textareas don't overflow */
+      input, textarea, select, button {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      /* Prevent tables from causing horizontal scroll */
+      table {
+        max-width: 100%;
+        table-layout: fixed;
+      }
       input:focus, textarea:focus, select:focus {
         border-color: #1779DC !important;
         box-shadow: 0 0 0 3px rgba(23, 121, 220, 0.15) !important;
         background: white !important;
+      }
+
+      @media (max-width: 768px) {
+        .myproposals-hero { padding: 30px 12px 40px !important; }
+        .myproposals-hero-title { font-size: 22px !important; }
+        .myproposals-hero-icon { width: 56px !important; height: 56px !important; }
+        .myproposals-hero-icon svg { size: 28px !important; }
+        .myproposals-container { margin: -30px auto 24px !important; padding: 0 12px !important; }
+        .myproposals-card { border-radius: 16px !important; }
+        .myproposals-header { padding: 14px 16px !important; flex-direction: column !important; gap: 8px !important; }
+        .myproposals-header h3 { font-size: 16px !important; }
+        .myproposals-table-container { overflow-x: hidden !important; }
+        .myproposals-desktop-table { display: none !important; }
+        .myproposals-mobile-card { padding: 14px !important; margin: 0 12px 12px !important; border-radius: 12px !important; animation: fadeIn 0.3s ease-out; }
+        .myproposals-mobile-row { flex-direction: column !important; gap: 6px !important; }
+        .myproposals-mobile-label { width: 70px !important; flex-shrink: 0 !important; font-size: 13px !important; }
+        .myproposals-mobile-value { flex: 1 !important; font-size: 13px !important; }
+        .myproposals-mobile-actions { flex-wrap: wrap !important; gap: 6px !important; margin-top: 8px !important; }
+        .myproposals-footer { padding: 16px !important; }
+        .myproposals-footer-btn { width: 100% !important; justify-content: center !important; }
+        .myproposals-login-card { margin: 0 12px !important; padding: 28px 20px !important; }
       }
     `;
     document.head.appendChild(style);
@@ -194,9 +243,9 @@ export default function MyProposalsPage() {
   // 未登录状态
   if (!user) {
     return (
-      <div style={{ background: '#F0F7FF', minHeight: '100vh' }}>
+      <div style={{ background: '#F0F7FF', minHeight: '100vh', overflowX: 'hidden', maxWidth: '100vw' }}>
         {/* Hero Section */}
-        <div style={{
+        <div className="myproposals-hero" style={{
           padding: '48px 0',
           background: 'linear-gradient(135deg, #1779DC 0%, #2861AE 100%)',
           position: 'relative',
@@ -215,7 +264,7 @@ export default function MyProposalsPage() {
 
           <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
             <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto', padding: '20px 0' }}>
-              <div style={{
+              <div className="myproposals-hero-icon" style={{
                 width: '80px', height: '80px', borderRadius: '20px',
                 background: 'rgba(255,255,255,0.15)',
                 backdropFilter: 'blur(10px)',
@@ -225,7 +274,7 @@ export default function MyProposalsPage() {
               }}>
                 <FileText size={40} style={{ color: 'white' }} />
               </div>
-              <h1 style={{
+              <h1 className="myproposals-hero-title" style={{
                 fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: '800', color: 'white',
                 marginBottom: '16px', lineHeight: 1.2
               }}>我的提案建议</h1>
@@ -237,8 +286,8 @@ export default function MyProposalsPage() {
         </div>
 
         {/* Login Prompt */}
-        <div style={{ maxWidth: '500px', margin: '0 auto 48px', padding: '0 24px', position: 'relative', zIndex: 2 }}>
-          <div style={{
+        <div className="myproposals-container" style={{ maxWidth: '500px', margin: '0 auto 48px', padding: '0 24px', position: 'relative', zIndex: 2 }}>
+          <div className="myproposals-login-card" style={{
             background: 'white', borderRadius: '20px',
             boxShadow: '0 4px 20px rgba(23, 121, 220, 0.08)',
             padding: '40px 32px', textAlign: 'center'
@@ -275,9 +324,9 @@ export default function MyProposalsPage() {
   }
 
   return (
-    <div style={{ background: '#F0F7FF', minHeight: '100vh' }}>
+    <div style={{ background: '#F0F7FF', minHeight: '100vh', overflowX: 'hidden', maxWidth: '100vw' }}>
       {/* Hero Section */}
-      <div style={{
+      <div className="myproposals-hero" style={{
         padding: '60px 0 80px',
         background: 'linear-gradient(135deg, #1779DC 0%, #2861AE 100%)',
         position: 'relative',
@@ -296,7 +345,7 @@ export default function MyProposalsPage() {
 
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto', padding: '20px 0' }}>
-            <div style={{
+            <div className="myproposals-hero-icon" style={{
               width: '72px', height: '72px', borderRadius: '18px',
               background: 'rgba(255,255,255,0.15)',
               backdropFilter: 'blur(10px)',
@@ -306,7 +355,7 @@ export default function MyProposalsPage() {
             }}>
               <FileText size={36} style={{ color: 'white' }} />
             </div>
-            <h1 style={{
+            <h1 className="myproposals-hero-title" style={{
               fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: '800', color: 'white',
               marginBottom: '12px', lineHeight: 1.2
             }}>我的提案建议</h1>
@@ -318,15 +367,15 @@ export default function MyProposalsPage() {
       </div>
 
       {/* Results */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto 48px', padding: '0 24px', position: 'relative', zIndex: 2 }}>
-        <div style={{
+      <div className="myproposals-container" style={{ maxWidth: '1400px', margin: '0 auto 48px', padding: '0 24px', position: 'relative', zIndex: 2 }}>
+        <div className="myproposals-card" style={{
           background: 'white', borderRadius: '20px',
           boxShadow: '0 10px 40px rgba(23, 121, 220, 0.12)',
           overflow: 'hidden',
           marginTop: '-40px'
         }}>
           {/* Header */}
-          <div style={{
+          <div className="myproposals-header" style={{
             padding: '20px 24px', borderBottom: '1px solid #F3F4F6',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
@@ -339,8 +388,9 @@ export default function MyProposalsPage() {
           </div>
 
           {/* Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse' }}>
+          <div className="myproposals-table-container" style={{ overflowX: 'auto' }}>
+            {/* 桌面端表格 */}
+            <table className="myproposals-desktop-table" style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#F9FAFB' }}>
                   <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#374151' }}>编号</th>
@@ -360,7 +410,7 @@ export default function MyProposalsPage() {
                     </td>
                   </tr>
                 ) : proposals.length > 0 ? (
-                  proposals.map((proposal, index) => (
+                  proposals.map((proposal) => (
                     <tr key={proposal.tajyId} style={{
                       borderBottom: '1px solid #F3F4F6',
                     }}>
@@ -457,15 +507,115 @@ export default function MyProposalsPage() {
                 )}
               </tbody>
             </table>
+
+            {/* 移动端卡片布局 */}
+            <div className="md:hidden">
+              {loading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px', color: '#1779DC' }} />
+                  <p style={{ color: '#6B7280' }}>加载中...</p>
+                </div>
+              ) : proposals.length > 0 ? (
+                proposals.map((proposal) => (
+                  <div
+                    key={proposal.tajyId}
+                    className="myproposals-mobile-card"
+                    style={{
+                      background: 'white', border: '1px solid #F3F4F6', borderBottom: 'none',
+                    }}
+                  >
+                    {/* 标题和编号 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <Link
+                        href={`/proposals/${proposal.tajyId}`}
+                        style={{
+                          color: '#1779DC', fontWeight: '500',
+                          textDecoration: 'none', flex: 1, marginRight: '8px'
+                        }}
+                      >
+                        {proposal.title}
+                      </Link>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#6B7280', background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>
+                        TY{String(proposal.tajyId).padStart(4, '0')}
+                      </span>
+                    </div>
+
+                    {/* 类型和状态 */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                      {getTypeBadge(proposal.type)}
+                      {getStatusBadge(proposal.process)}
+                    </div>
+
+                    {/* 提交时间 */}
+                    <div className="myproposals-mobile-row" style={{ display: 'flex', fontSize: '13px', color: '#6B7280' }}>
+                      <span className="myproposals-mobile-label">提案时间</span>
+                      <span className="myproposals-mobile-value">{proposal.createAt || '-'}</span>
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div className="myproposals-mobile-actions" style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                      <Link
+                        href={`/proposals/${proposal.tajyId}`}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '6px 10px', background: '#F0F7FF',
+                          color: '#1779DC', borderRadius: '6px',
+                          fontSize: '12px', fontWeight: '500',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <Eye size={12} />查看详情
+                      </Link>
+                      {proposal.process === 0 && !isOver30Days(proposal.createAt) && (
+                        <>
+                          <Link
+                            href={`/edit-proposal/${proposal.tajyId}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              padding: '6px 10px', background: '#FEF3C7',
+                              color: '#D97706', borderRadius: '6px',
+                              fontSize: '12px', fontWeight: '500',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <Edit size={12} />修改
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(proposal.tajyId, proposal.title)}
+                            disabled={deletingId === proposal.tajyId}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              padding: '6px 10px', background: '#FEE2E2',
+                              color: '#DC2626', borderRadius: '6px',
+                              fontSize: '12px', fontWeight: '500',
+                              border: 'none', cursor: deletingId === proposal.tajyId ? 'not-allowed' : 'pointer',
+                              opacity: deletingId === proposal.tajyId ? 0.6 : 1
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            {deletingId === proposal.tajyId ? '删除中...' : '删除'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#6B7280' }}>
+                  暂无提案记录
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Footer - Add Proposal Button */}
-          <div style={{
+          <div className="myproposals-footer" style={{
             padding: '20px 24px', borderTop: '1px solid #F3F4F6',
             display: 'flex', justifyContent: 'center'
           }}>
             <Link
               href="/submit"
+              className="myproposals-footer-btn"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 padding: '12px 28px', background: 'linear-gradient(135deg, #1779DC 0%, #2861AE 100%)',

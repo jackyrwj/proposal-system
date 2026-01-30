@@ -35,12 +35,21 @@ export async function GET(request: NextRequest) {
     // 解码 URL 编码的 cookie 值
     const user = JSON.parse(decodeURIComponent(userStr));
     const cardId = user.id;
+    const stuid = user.stuid;
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
 
-    let whereClause = 'WHERE cardId = ?';
+    // 查询条件：使用 cardId 或 stuid 匹配
+    let whereClause = 'WHERE (cardId = ?';
     const params: any[] = [cardId];
+
+    // 如果用户有 stuid，也匹配 stuid
+    if (stuid && stuid !== cardId) {
+      whereClause += ' OR cardId = ?';
+      params.push(stuid);
+    }
+    whereClause += ')';
 
     if (unreadOnly) {
       whereClause += ' AND hasRead = 0';
@@ -54,10 +63,25 @@ export async function GET(request: NextRequest) {
     `, params);
 
     // 解析 context JSON
-    const parsedMessages = messages.map(msg => ({
-      ...msg,
-      context: msg.context ? JSON.parse(msg.context) : null,
-    }));
+    const parsedMessages = messages.map(msg => {
+      let context = null;
+      if (msg.context) {
+        try {
+          // 尝试解析 JSON
+          context = JSON.parse(msg.context);
+        } catch {
+          // 如果解析失败，说明是纯文本，直接作为 content
+          context = {
+            title: '系统消息',
+            content: msg.context,
+          };
+        }
+      }
+      return {
+        ...msg,
+        context,
+      };
+    });
 
     return NextResponse.json({
       success: true,

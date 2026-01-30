@@ -66,7 +66,7 @@ export default function MessagesPage() {
   // 标记为已读
   const markAsRead = async (msgId: number, proposalId?: number) => {
     try {
-      await fetch('/api/messages', {
+      await fetch('/api/messages/read', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ msgIds: [msgId] }),
@@ -77,9 +77,19 @@ export default function MessagesPage() {
         m.msgId === msgId ? { ...m, hasRead: 1 } : m
       ));
 
-      // 如果有提案ID，跳转
+      // 触发自定义事件通知 Header 组件刷新未读数量
+      window.dispatchEvent(new CustomEvent('messagesRead', { detail: { count: 1 } }));
+
+      // 如果有提案ID，先检查提案是否存在且未删除
       if (proposalId) {
-        router.push(`/proposals/${proposalId}`);
+        const res = await fetch(`/api/proposals/${proposalId}`);
+        const json = await res.json();
+        if (json.success) {
+          router.push(`/proposals/${proposalId}`);
+        } else {
+          // 提案不存在或已删除
+          alert('该提案已被删除');
+        }
       }
     } catch (error) {
       console.error('Error marking as read:', error);
@@ -91,7 +101,7 @@ export default function MessagesPage() {
     if (selectedIds.length === 0) return;
 
     try {
-      await fetch('/api/messages', {
+      await fetch('/api/messages/read', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ msgIds: selectedIds }),
@@ -101,6 +111,9 @@ export default function MessagesPage() {
         selectedIds.includes(m.msgId) ? { ...m, hasRead: 1 } : m
       ));
       setSelectedIds([]);
+
+      // 触发自定义事件通知 Header 组件刷新未读数量
+      window.dispatchEvent(new CustomEvent('messagesRead', { detail: { count: selectedIds.length } }));
     } catch (error) {
       console.error('Error marking as read:', error);
     }

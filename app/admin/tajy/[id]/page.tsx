@@ -13,6 +13,7 @@ export default function AdminTajyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isSaved, setIsSaved] = useState(false); // 跟踪是否已保存
 
   // 回复弹窗状态
   const [replyDialog, setReplyDialog] = useState<{
@@ -75,7 +76,9 @@ export default function AdminTajyDetailPage() {
       const json = await res.json();
 
       if (json.success) {
-        router.push('/admin/tajy');
+        setIsSaved(true); // 标记为已保存
+        setSaving(false);
+        alert('保存成功！现在可以发送回复给提案人了。');
       } else {
         alert(json.error || '保存失败');
         setSaving(false);
@@ -174,6 +177,7 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
       if (json.success) {
         alert('回复已发送！');
         closeReplyDialog();
+        router.push('/admin/tajy');
       } else {
         alert(json.error || '发送失败');
         setReplyDialog(prev => ({ ...prev, loading: false }));
@@ -350,6 +354,35 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* 提案人确认状态 */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <CheckCircle size={18} className="text-[#1779DC]" />
+              提案人确认状态
+            </h3>
+            {proposal.ownerConfirmed === 1 ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <CheckCircle size={20} className="text-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-green-800">提案人已确认知悉</p>
+                    <p className="text-sm text-green-600">
+                      确认时间：{proposal.ownerConfirmedAt ? proposal.ownerConfirmedAt.slice(0, 16).replace('T', ' ') : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                <Clock size={20} className="text-gray-400 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-gray-600">提案人尚未确认</p>
+                  <p className="text-sm text-gray-400">提案人查看处理结果后需确认知悉</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Status */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">修改处理状态</h3>
@@ -384,14 +417,29 @@ ${formData.departmentName} ${year}年${month}月${day}日`;
           {/* 发送回复 */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">发送回复</h3>
-            <p className="text-sm text-gray-500 mb-4">向提案人发送处理结果回复</p>
-            <button
-              onClick={openReplyDialog}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:shadow-lg text-white rounded-xl transition-all"
-            >
-              <Bell size={18} />
-              发送提案人
-            </button>
+            {!isSaved ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <Clock size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-amber-700">请先保存提案信息，保存成功后才能发送回复给提案人</p>
+                </div>
+                <button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-500 rounded-xl cursor-not-allowed"
+                >
+                  <Bell size={18} />
+                  发送提案人
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={openReplyDialog}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:shadow-lg text-white rounded-xl transition-all"
+              >
+                <Bell size={18} />
+                发送提案人
+              </button>
+            )}
           </div>
 
           {/* Type */}

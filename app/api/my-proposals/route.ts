@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
             attachment, type, process, description, sfnm,
             fyr, mail, phone, clickCount, createAt
           FROM tajy
-          WHERE type = 2 AND name = ?
+          WHERE type = 2 AND name = ? AND deletedAt IS NULL
           ORDER BY tajyId DESC
         `, [userName]);
       } else {
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
             attachment, type, process, description, sfnm,
             fyr, mail, phone, clickCount, createAt
           FROM tajy
-          WHERE stuid = ?
+          WHERE stuid = ? AND deletedAt IS NULL
           ORDER BY tajyId DESC
         `, [userId]);
       }
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         attachment, type, process, description, sfnm,
         fyr, mail, phone, clickCount, createAt
       FROM tajy
-      WHERE 1=1
+      WHERE deletedAt IS NULL
     `;
     const params: any[] = [];
 

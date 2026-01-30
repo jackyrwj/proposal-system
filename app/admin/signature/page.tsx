@@ -23,8 +23,9 @@ interface Signature {
 
 interface ProposalInfo {
   title: string;
-  tajybh: number;
+  tajybh: string | number;
   tajyId: number;
+  proposalType?: 'tajy' | 'zsta'; // 提案类型，用于确定跳转链接
 }
 
 export default function AdminSignaturePage() {
@@ -62,17 +63,57 @@ export default function AdminSignaturePage() {
   const fetchProposalInfo = async (ids: number[]) => {
     if (ids.length === 0) return;
     try {
-      const promises = ids.map(id =>
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/proposals/${id}`).then(r => r.json())
-      );
+      // 尝试查询两个表，因为 signature.tajyId 可能指向 tajy 表或 zsta 表
+      type FetchResult = {
+        id: number;
+        type: 'tajy' | 'zsta' | null;
+        data: { title: string; tajybh: number; tajyId: number } | null;
+      };
+
+      const promises = ids.map(async (id): Promise<FetchResult> => {
+        // 先尝试查询 tajy 表
+        const tajyRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/proposals/${id}`);
+        const tajyJson = await tajyRes.json();
+
+        if (tajyJson.success && tajyJson.data) {
+          return {
+            id,
+            type: 'tajy',
+            data: {
+              title: tajyJson.data.title,
+              tajybh: tajyJson.data.tajybh,
+              tajyId: tajyJson.data.tajyId,
+            }
+          };
+        }
+
+        // 如果 tajy 表没有，尝试查询 zsta 表
+        const zstaRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/formal-proposals/${id}`);
+        const zstaJson = await zstaRes.json();
+
+        if (zstaJson.success && zstaJson.data) {
+          return {
+            id,
+            type: 'zsta',
+            data: {
+              title: zstaJson.data.title,
+              tajybh: zstaJson.data.zstabh,
+              tajyId: zstaJson.data.zstaId,
+            }
+          };
+        }
+
+        // 两个表都没有找到
+        return { id, type: null, data: null };
+      });
+
       const results = await Promise.all(promises);
-      const map: Record<number, ProposalInfo> = {};
-      results.forEach(json => {
-        if (json.success && json.data) {
-          map[json.data.tajyId] = {
-            title: json.data.title,
-            tajybh: json.data.tajybh,
-            tajyId: json.data.tajyId,
+      const map: Record<number, ProposalInfo & { proposalType?: 'tajy' | 'zsta' }> = {};
+      results.forEach(result => {
+        if (result.data && result.type) {
+          map[result.id] = {
+            ...result.data,
+            proposalType: result.type,
           };
         }
       });
@@ -146,17 +187,23 @@ export default function AdminSignaturePage() {
             {signatures.map((sig) => (
               <tr key={sig.sId} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
-                  <Link
-                    href={`/admin/tajy/${sig.tajyId}`}
-                    className="block text-sm group"
-                  >
-                    <span className="text-[#1779DC] font-medium group-hover:underline">
-                      {proposalMap[sig.tajyId]?.title || `提案 #${sig.tajyId}`}
+                  {proposalMap[sig.tajyId] ? (
+                    <Link
+                      href={`/admin/${proposalMap[sig.tajyId].proposalType || 'tajy'}/${sig.tajyId}`}
+                      className="block text-sm group"
+                    >
+                      <span className="text-[#1779DC] font-medium group-hover:underline">
+                        {proposalMap[sig.tajyId]?.title || `提案 #${sig.tajyId}`}
+                      </span>
+                      <span className="text-gray-500 ml-2">
+                        ({(proposalMap[sig.tajyId].proposalType === 'zsta' ? 'ZSTA' : 'TY')}{String(proposalMap[sig.tajyId]?.tajyId || sig.tajyId).padStart(3, '0')})
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-gray-400">
+                      提案 #{sig.tajyId} (不存在)
                     </span>
-                    <span className="text-gray-500 ml-2">
-                      (TY{String(proposalMap[sig.tajyId]?.tajyId || sig.tajyId).padStart(4, '0')})
-                    </span>
-                  </Link>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <span className="font-medium text-gray-800">{sig.fyr}</span>

@@ -1,10 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import crypto from 'crypto';
+import { encryptPassword, decryptPassword, generateRandomPassword } from '@/lib/password';
 
-// Helper function to hash password with MD5
-function hashPassword(password: string): string {
-  return crypto.createHash('md5').update(password).digest('hex');
+// GET /api/admin/settings/departments/[id]/reset-password - 获取当前密码（解密后的明文）
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const result = await query(`
+      SELECT password FROM department WHERE departId = ?
+    `, [id]) as { password: string }[];
+
+    if (!result || result.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: '部门不存在',
+      }, { status: 404 });
+    }
+
+    const encryptedPassword = result[0].password;
+
+    // 解密密码
+    let originalPassword = '';
+    try {
+      originalPassword = decryptPassword(encryptedPassword);
+    } catch (error) {
+      console.error('Error decrypting password:', error);
+      return NextResponse.json({
+        success: false,
+        error: '密码格式无效，无法解密',
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { password: originalPassword },
+    });
+  } catch (error) {
+    console.error('Error getting password:', error);
+    return NextResponse.json({
+      success: false,
+      error: '获取密码失败',
+    }, { status: 500 });
+  }
 }
 
 // POST /api/admin/settings/departments/[id]/reset-password - 重置部门密码
@@ -24,11 +65,11 @@ export async function POST(
       }, { status: 400 });
     }
 
-    const passwordHash = hashPassword(password);
+    const encryptedPassword = encryptPassword(password);
 
     await query(`
       UPDATE department SET password = ?, needChangePassword = 1 WHERE departId = ?
-    `, [passwordHash, id]);
+    `, [encryptedPassword, id]);
 
     return NextResponse.json({
       success: true,

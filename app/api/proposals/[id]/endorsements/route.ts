@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getChinaTimeString } from '@/lib/db';
+import { sendEndorsementReceivedNotification } from '@/lib/wework';
 
 // GET /api/proposals/[id]/endorsements - 获取附议邀请状态
 export async function GET(
@@ -133,12 +134,12 @@ export async function POST(
     // 如果接受附议，添加到 fyr 字段
     if (action === 'accept') {
       // 获取提案和附议人信息
-      const [proposalData] = await query<any[]>(`
-        SELECT tajyId, fyr, name FROM tajy WHERE tajyId = ?
+      const proposalData = await query<any[]>(`
+        SELECT tajyId, fyr, name, stuid, title FROM tajy WHERE tajyId = ?
       `, [proposalId]);
 
-      if (proposalData) {
-        const proposal = proposalData as any;
+      if (proposalData && proposalData[0]) {
+        const proposal = proposalData[0] as any;
         const newEndorsement = `${user.name}(${endorserId})`;
         const currentFyr = proposal.fyr || '';
         const updatedFyr = currentFyr
@@ -148,6 +149,27 @@ export async function POST(
         await query(`
           UPDATE tajy SET fyr = ? WHERE tajyId = ?
         `, [updatedFyr, proposalId]);
+
+        // 获取提案人的 cardId 用于发送站内信
+        const ownerData = await query(`
+          SELECT id FROM jdhmd WHERE stuid = ?
+        `, [proposal.stuid]) as { id: string }[];
+
+        // 发送站内信通知提案人（仅站内信，不发企微）
+        if (ownerData && ownerData[0]) {
+          const ownerCardId = ownerData[0].id;
+          const proposalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/proposals/${proposalId}`;
+
+          sendEndorsementReceivedNotification(
+            ownerCardId,
+            proposal.title || '未知提案',
+            user.name || '某位老师',
+            proposalId,
+            proposalUrl
+          ).catch(err => {
+            console.error('Failed to send endorsement received notification:', err);
+          });
+        }
       }
     }
 

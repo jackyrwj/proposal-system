@@ -47,7 +47,7 @@ export async function PUT(
     values.push(newsId);
 
     await query(`
-      UPDATE xwdt
+      UPDATE news
       SET ${updates.join(', ')}
       WHERE newsId = ?
     `, values);
@@ -82,7 +82,7 @@ export async function DELETE(
     }
 
     await query(`
-      DELETE FROM xwdt
+      DELETE FROM news
       WHERE newsId = ?
     `, [newsId]);
 

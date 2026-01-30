@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { fetchDepartments } from '@/lib/cdsp';
+import { fetchUnitsFromGG0008 } from '@/lib/cdsp';
 
 /**
  * POST /api/admin/settings/departments/sync
- * 从 CDSP 同步部门数据
+ * 从 CDSP GG0008 同步部门数据（全量替换）
  */
 export async function POST() {
   try {
-    // 从 CDSP 获取部门数据
-    const cdspDepartments = await fetchDepartments();
+    // 从 CDSP 获取单位数据 (GG0008)，只获取单位层次为2的职能部门
+    const cdspUnits = await fetchUnitsFromGG0008();
 
-    if (cdspDepartments.length === 0) {
+    if (cdspUnits.length === 0) {
       return NextResponse.json({
         success: false,
         error: '未获取到部门数据',
@@ -19,93 +19,59 @@ export async function POST() {
     }
 
     let added = 0;
-    let updated = 0;
-    let skipped = 0;
-    // 详细跳过原因统计
-    let skipNotUsed = 0;      // 未启用
-    let skipNoCode = 0;       // 无代码
-    let skipNoName = 0;       // 无名称
-    let skipUnchanged = 0;    // 已存在且名称未变
+    let deleted = 0;
+    let total = 0;
 
-    // 查看现有部门
-    const existingDepts = await query<{ departId: string; departName: string }>(`
-      SELECT departId, departName FROM department
-    `);
+    // 统计需要处理的数据（已启用的）
+    for (const unit of cdspUnits) {
+      const code = unit['单位代码'];
+      const name = unit['单位名称'];
+      const isUsed = unit['是否使用'] === '1';
 
-    const existingMap = new Map(existingDepts.map(d => [d.departId, d.departName]));
+      if (code && name && isUsed) {
+        total++;
+      }
+    }
 
-    // 处理每个部门
-    for (const dept of cdspDepartments) {
-      const code = dept['代码'];
-      const name = dept['名称'];
-      const isUsed = dept['是否使用'] === '1';
+    // 全量替换：先删除所有现有部门（保留可能不在CDSP中的数据可以注释掉这行）
+    await query(`DELETE FROM department`);
+    deleted = 1; // 简化计数，实际删除数量不展示
+
+    // 生成随机密码函数
+    const generatePasswordHash = async () => {
+      const crypto = await import('crypto');
+      const password = crypto.randomBytes(4).toString('hex');
+      return { password, hash: crypto.createHash('md5').update(password).digest('hex') };
+    };
+
+    // 批量插入新数据
+    for (const unit of cdspUnits) {
+      const code = unit['单位代码'];
+      const name = unit['单位名称'];
+      const isUsed = unit['是否使用'] === '1';
 
       // 只处理启用的部门
-      if (!isUsed) {
-        skipNotUsed++;
-        skipped++;
+      if (!code || !name || !isUsed) {
         continue;
       }
 
-      if (!code) {
-        skipNoCode++;
-        skipped++;
-        continue;
-      }
+      const { hash } = await generatePasswordHash();
 
-      if (!name) {
-        skipNoName++;
-        skipped++;
-        continue;
-      }
-
-      // 检查是否已存在
-      const existingName = existingMap.get(code);
-
-      if (existingName) {
-        // 已存在，检查是否需要更新名称
-        if (existingName !== name) {
-          await query(`
-            UPDATE department SET departName = ? WHERE departId = ?
-          `, [name, code]);
-          updated++;
-        } else {
-          skipUnchanged++;
-          skipped++;
-        }
-      } else {
-        // 不存在，添加新部门
-        // 生成随机密码
-        const crypto = await import('crypto');
-        const password = crypto.randomBytes(4).toString('hex');
-        const passwordHash = crypto.createHash('md5').update(password).digest('hex');
-
-        // 账号使用部门代码（纯数字部分）
-        const account = code.replace(/\D/g, '') || code;
-
-        await query(`
-          INSERT INTO department (departId, departName, account, password, needChangePassword)
-          VALUES (?, ?, ?, ?, 1)
-          ON DUPLICATE KEY UPDATE departName = VALUES(departName)
-        `, [code, name, account, passwordHash]);
-        added++;
-      }
+      await query(`
+        INSERT INTO department (departId, departName, account, password, needChangePassword)
+        VALUES (?, ?, ?, ?, 1)
+      `, [code, name, code, hash]);
+      added++;
     }
 
     return NextResponse.json({
       success: true,
       message: `同步完成`,
       data: {
-        total: cdspDepartments.length,
+        total: cdspUnits.length,
         added,
-        updated,
-        skipped,
-        skipDetails: {
-          notUsed: skipNotUsed,      // 未启用
-          noCode: skipNoCode,        // 无代码
-          noName: skipNoName,        // 无名称
-          unchanged: skipUnchanged,  // 已存在且名称未变
-        },
+        deleted: 1, // 全量替换，删除的旧记录数不细分
+        skipped: cdspUnits.length - total, // 未启用/无代码/无名称的数量
       },
     });
   } catch (error) {

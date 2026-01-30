@@ -32,6 +32,10 @@ export interface Proposal {
   phone: string; // 电话
   clickCount: number; // 点击次数
   createAt: string; // 创建时间
+  ownerConfirmed: number; // 提案人是否已确认 0-未确认 1-已确认
+  ownerConfirmedAt: string | null; // 提案人确认时间
+  isOwner?: boolean; // 当前用户是否是提案人 (API 动态添加)
+  reply?: string; // 办理答复 (API 动态添加)
 }
 
 // 正式提案 Zsta

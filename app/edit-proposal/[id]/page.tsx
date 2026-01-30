@@ -122,27 +122,37 @@ export default function EditProposalPage() {
         }
 
         // 检查是否为提案所有者
-        // 个人账号：通过 stuid 匹配；集体账号：通过 name 匹配
         let isOwner = false;
         if (user?.type === 'individual') {
-          // 兼容新旧两种情况：
-          // 1. 新提案：data.stuid === user.stuid (正确使用学号)
-          // 2. 旧提案：data.stuid 存的是 parseInt(user.id) 的结果，需要数值比较
-          const dataStuidStr = String(data.stuid).trim();
+          const dataStuidStr = String(data.stuid || '').trim();
           const userIdNum = parseInt(user.id, 10);
 
-          isOwner = dataStuidStr === user.stuid ||
-                   dataStuidStr === user.id ||
-                   (userIdNum > 0 && dataStuidStr === String(userIdNum));
+          // 方式1：通过 name 匹配（最可靠）
+          const nameMatch = data.name && user.name &&
+            String(data.name).trim() === String(user.name).trim();
+
+          // 方式2：通过 stuid 匹配（如果 user 有 stuid）
+          const stuidMatch = user.stuid && dataStuidStr === String(user.stuid).trim();
+
+          // 方式3：通过 id 匹配（兼容旧数据：data.stuid 存的是 parseInt(user.id) 的结果）
+          const idMatch = dataStuidStr === user.id ||
+                         (userIdNum > 0 && dataStuidStr === String(userIdNum));
+
+          isOwner = nameMatch || stuidMatch || idMatch;
 
           // Debug logging
           console.log('[Edit Proposal] Permission check:', {
             userType: user.type,
+            userName: user.name,
             userStuid: user.stuid,
             userId: user.id,
             userIdNum: userIdNum,
+            dataName: data.name,
             dataStuid: data.stuid,
             dataStuidStr: dataStuidStr,
+            nameMatch,
+            stuidMatch,
+            idMatch,
             isOwner,
           });
         } else {
@@ -156,6 +166,13 @@ export default function EditProposalPage() {
         }
 
         setProposal(data);
+
+        // 调试日志
+        console.log('[Edit Proposal] 数据加载完成:', {
+          fyr: data.fyr,
+          fyrStatuses: data.fyrStatuses,
+          selectedFyrList: selectedFyrList,
+        });
 
         // 填充表单数据
         setFormData({
@@ -183,6 +200,13 @@ export default function EditProposalPage() {
         if (data.fyrdepart) {
           setSelectedDepartList(data.fyrdepart.split('，').filter((d: string) => d.trim()));
         }
+
+        // 调试日志
+        console.log('[Edit Proposal] 数据加载完成:', {
+          fyr: data.fyr,
+          fyrStatuses: data.fyrStatuses,
+          selectedFyrListAfter: selectedFyrList,
+        });
       } else {
         setError('提案不存在');
       }
@@ -208,14 +232,26 @@ export default function EditProposalPage() {
 
   // 删除附议人
   const handleRemoveFyr = (id: string) => {
+    // 已确认的附议人不能删除
+    const status = proposal?.fyrStatuses?.[id];
+    if (status === 'accepted') {
+      alert('该附议人已确认附议，无法删除');
+      return;
+    }
     const newList = selectedFyrList.filter(m => m.id !== id);
     setSelectedFyrList(newList);
     setFormData(prev => ({ ...prev, fyr: newList.map(s => `${s.name}(${s.id})`).join('，') }));
   };
 
   const handleFyrConfirm = (selected: JdhMember[]) => {
-    setSelectedFyrList(selected);
-    setFormData(prev => ({ ...prev, fyr: selected.map(s => `${s.name}(${s.id})`).join('，') }));
+    // 获取已确认的附议人
+    const confirmedFyr = selectedFyrList.filter(m => proposal?.fyrStatuses?.[m.id] === 'accepted');
+
+    // 合并：已确认的 + 新选择的（排除已确认的）
+    const newSelected = [...confirmedFyr, ...selected.filter(s => proposal?.fyrStatuses?.[s.id] !== 'accepted')];
+
+    setSelectedFyrList(newSelected);
+    setFormData(prev => ({ ...prev, fyr: newSelected.map(s => `${s.name}(${s.id})`).join('，') }));
   };
 
   const handleDepartConfirm = (selected: string[]) => {
@@ -281,10 +317,7 @@ export default function EditProposalPage() {
         phone: formData.phone,
         mail: formData.email,
         fyr: formData.fyr,
-        fyrdepart: selectedDepartList.join('，'),
-        fl: formData.category,
         type: formData.type,
-        notifyEndorsers: true, // 通知附议人
       };
 
       const res = await fetch(`/api/proposals/${params.id}`, {
@@ -536,34 +569,50 @@ export default function EditProposalPage() {
                     已选择 {selectedFyrList.length} 位附议人：
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {selectedFyrList.map((member) => (
-                      <span
-                        key={member.id}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                          color: 'white',
-                          borderRadius: '20px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        {member.name}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFyr(member.id)}
+                    {selectedFyrList.map((member) => {
+                      const status = proposal?.fyrStatuses?.[member.id];
+                      const isAccepted = status === 'accepted';
+                      const isPending = status === 'pending' || !status;
+                      return (
+                        <span
+                          key={member.id}
                           style={{
-                            background: 'none', border: 'none',
-                            color: 'white', cursor: 'pointer',
-                            padding: 0, display: 'flex', alignItems: 'center'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            background: isAccepted
+                              ? 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)'
+                              : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                            color: 'white',
+                            borderRadius: '20px',
+                            fontSize: '14px',
+                            opacity: isAccepted ? 0.8 : 1,
                           }}
                         >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    ))}
+                          {member.name}
+                          {isAccepted && (
+                            <span style={{ fontSize: '12px', opacity: 0.9 }}>（已确认）</span>
+                          )}
+                          {isPending && (
+                            <span style={{ fontSize: '12px', opacity: 0.9 }}>（待确认）</span>
+                          )}
+                          {!isAccepted && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFyr(member.id)}
+                              style={{
+                                background: 'none', border: 'none',
+                                color: 'white', cursor: 'pointer',
+                                padding: 0, display: 'flex', alignItems: 'center'
+                              }}
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -666,8 +715,14 @@ export default function EditProposalPage() {
       </div>
 
       {/* Modals */}
+      {/* Modals */}
       <FyrSelectModal isOpen={fyrModalOpen} onClose={() => setFyrModalOpen(false)}
-        onConfirm={handleFyrConfirm} initialSelected={selectedFyrList} excludeId={user?.id} />
+        onConfirm={handleFyrConfirm}
+        initialSelected={selectedFyrList.filter(m => proposal?.fyrStatuses?.[m.id] !== 'accepted')}
+        excludeId={user?.id}
+        excludeConfirmedIds={Object.entries(proposal?.fyrStatuses || {})
+          .filter(([_, status]) => status === 'accepted')
+          .map(([id]) => id)} />
       <DepartSelectModal isOpen={departModalOpen} onClose={() => setDepartModalOpen(false)}
         onConfirm={handleDepartConfirm} initialSelected={selectedDepartList} />
 

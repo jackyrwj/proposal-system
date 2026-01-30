@@ -26,6 +26,7 @@ export const TEMPLATE_IDS = {
 export const MESSAGE_TYPES = {
   ENDORSE_INVITATION: 1,  // 附议邀请
   PROCESS_NOTIFICATION: 2, // 审批进度
+  ENDORSEMENT_RECEIVED: 3, // 收到附议（仅站内信，不发企微）
 } as const;
 
 // 缓存 access_token，避免频繁请求
@@ -345,4 +346,49 @@ export function getProcessStatusText(process: number): string {
     2: '处理完毕',
   };
   return statusMap[process] || '状态已更新';
+}
+
+/**
+ * 发送收到附议通知（仅站内信，不发企微消息）
+ * 当有人附议提案人的提案时，通知提案人
+ * @param proposalOwnerCardId 提案人的cardId
+ * @param proposalTitle 提案标题
+ * @param endorserName 附议人姓名
+ * @param proposalId 提案ID
+ * @param proposalUrl 提案详情链接
+ */
+export async function sendEndorsementReceivedNotification(
+  proposalOwnerCardId: string,
+  proposalTitle: string,
+  endorserName: string,
+  proposalId: number,
+  proposalUrl: string
+): Promise<boolean> {
+  let messageSuccess = true;
+  try {
+    const { getChinaTimeString } = await import('./db');
+    const timeStr = getChinaTimeString();
+
+    const messageContext = {
+      type: 'endorsement_received',
+      title: '您的提案收到新的附议',
+      content: `您的提案《${proposalTitle}》收到${endorserName}的附议支持。`,
+      proposalId: proposalId,
+      proposalTitle: proposalTitle,
+      endorserName: endorserName,
+      proposalUrl: proposalUrl,
+    };
+
+    await query(`
+      INSERT INTO message (cardId, informType, context, hasRead, time)
+      VALUES (?, ?, ?, ?, ?)
+    `, [proposalOwnerCardId, MESSAGE_TYPES.ENDORSEMENT_RECEIVED, JSON.stringify(messageContext), 0, timeStr]);
+
+    console.log('[Message] 收到附议站内信发送成功');
+  } catch (err) {
+    console.error('[Message] 收到附议站内信发送失败:', err);
+    messageSuccess = false;
+  }
+
+  return messageSuccess;
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { sendEndorsementReceivedNotification } from '@/lib/wework';
 
 // 从请求头获取用户信息
 function getUserFromRequest(request: NextRequest) {
@@ -67,7 +68,7 @@ export async function POST(
 
     // 获取提案信息
     const proposals = await query<any[]>(`
-      SELECT tajyId, fyr, name, stuid
+      SELECT tajyId, fyr, name, stuid, title
       FROM tajy
       WHERE tajyId = ?
     `, [proposalId]);
@@ -81,8 +82,16 @@ export async function POST(
 
     const proposal = proposals[0] as any;
 
-    // 不能附议自己的提案
-    if (proposal.stuid === user.id) {
+    // 不能附议自己的提案（通过 stuid 比较）
+    // 获取当前用户的 stuid
+    let userStuid: string | null = user.stuid || null;
+    if (!userStuid) {
+      const users = await query(`
+        SELECT stuid FROM jdhmd WHERE id = ?
+      `, [user.id]) as { stuid: string }[];
+      userStuid = users[0]?.stuid || null;
+    }
+    if (proposal.stuid && userStuid && String(proposal.stuid) === String(userStuid)) {
       return NextResponse.json({
         success: false,
         error: '不能附议自己的提案',
@@ -102,18 +111,32 @@ export async function POST(
       }
     }
 
-    // 获取当前用户的 stuid（学号），用于发送企业微信通知
-    const users = await query<{ stuid: string }[]>(`
-      SELECT stuid FROM jdhmd WHERE id = ?
-    `, [user.id]);
-    const userStuid = (users as any)?.[0]?.stuid;
-
     // 添加附议人
     const newEndorsements = [...existingEndorsements, currentEndorsement].join('，');
 
     await query(`
       UPDATE tajy SET fyr = ? WHERE tajyId = ?
     `, [newEndorsements, proposalId]);
+
+    // 发送站内信通知提案人（仅站内信，不发企微）
+    const ownerData = await query(`
+      SELECT id FROM jdhmd WHERE stuid = ?
+    `, [proposal.stuid]) as { id: string }[];
+
+    if (ownerData && ownerData[0]) {
+      const ownerCardId = ownerData[0].id;
+      const proposalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/proposals/${proposalId}`;
+
+      sendEndorsementReceivedNotification(
+        ownerCardId,
+        proposal.title || '未知提案',
+        user.name || '某位老师',
+        proposalId,
+        proposalUrl
+      ).catch(err => {
+        console.error('Failed to send endorsement received notification:', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -165,7 +188,7 @@ export async function DELETE(
 
     // 获取提案信息
     const proposals = await query<any[]>(`
-      SELECT tajyId, fyr, name, stuid
+      SELECT tajyId, fyr, name, stuid, title
       FROM tajy
       WHERE tajyId = ?
     `, [proposalId]);

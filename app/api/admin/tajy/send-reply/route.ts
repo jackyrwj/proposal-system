@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建提案链接
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
     let proposalUrl = `${baseUrl}/proposals/${proposalId}`;  // 默认跳转到提案建议
 
     // 检查是否已转换为正式提案，从 description 中提取 zstaId
@@ -92,6 +92,11 @@ export async function POST(request: NextRequest) {
     }
 
     const replySummary = `${replyDepartment}已回复`;
+
+    // 保存回复内容到数据库（只保存回复内容）
+    await query(`
+      UPDATE tajy SET description = ? WHERE tajyId = ?
+    `, [detailReply, proposalId]);
 
     // 发送回复通知（企微 + 站内信）
     if (proposerStuid) {

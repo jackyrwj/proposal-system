@@ -14,6 +14,8 @@ import {
   X,
   RefreshCw,
   Key,
+  Download,
+  Shield,
 } from 'lucide-react';
 
 interface Department {
@@ -50,6 +52,7 @@ export default function DepartmentsPage() {
 
   // Password management state
   const [passwordManageDept, setPasswordManageDept] = useState<Department | null>(null);
+  const [originalPassword, setOriginalPassword] = useState('');
   const [manualPassword, setManualPassword] = useState('');
   const [showManagePassword, setShowManagePassword] = useState(false);
   const [resetPasswordDept, setResetPasswordDept] = useState<Department | null>(null);
@@ -57,6 +60,7 @@ export default function DepartmentsPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isCreatePassword, setIsCreatePassword] = useState(false);
+  const [loadingPassword, setLoadingPassword] = useState(false);
 
   // 编辑行引用，用于滚动
   const editRowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
@@ -192,9 +196,9 @@ export default function DepartmentsPage() {
     setEditingDeptId(null);
   };
 
-  // 从 CDSP 同步部门数据
+  // 从 CDSP 同步部门数据（全量替换）
   const handleSync = async () => {
-    if (!confirm('确定要从全校组织机构同步部门数据吗？\n\n- 新增部门会自动添加\n- 已有部门会更新名称\n- 此操作可能需要几秒钟')) {
+    if (!confirm('确定要从全校组织机构同步部门数据吗？\n\n- 将删除现有所有部门数据\n- 重新从CDSP导入最新数据\n- 此操作可能需要几秒钟')) {
       return;
     }
 
@@ -205,16 +209,9 @@ export default function DepartmentsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        const { added, updated, skipped, total, skipDetails } = json.data;
-        const skipReasons = [];
-        if (skipDetails.notUsed > 0) skipReasons.push(`${skipDetails.notUsed}个未启用`);
-        if (skipDetails.noCode > 0) skipReasons.push(`${skipDetails.noCode}个无代码`);
-        if (skipDetails.noName > 0) skipReasons.push(`${skipDetails.noName}个无名称`);
-        if (skipDetails.unchanged > 0) skipReasons.push(`${skipDetails.unchanged}个已存在且未变化`);
-
-        const skipMsg = skipReasons.length > 0 ? `（${skipReasons.join('、')}）` : '';
+        const { added, skipped } = json.data;
         showToast(
-          `同步成功！共 ${total} 条数据，新增 ${added} 个，更新 ${updated} 个，跳过 ${skipped} 个${skipMsg}`,
+          `同步成功！共导入 ${added} 个部门，跳过 ${skipped} 个无效数据`,
           'success'
         );
         fetchDepartments();
@@ -271,6 +268,78 @@ export default function DepartmentsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 重置所有部门密码
+  const handleResetAllPasswords = async () => {
+    if (!confirm('确定要重置所有部门的密码吗？\n\n- 所有部门密码将重置为6位随机密码\n- 重置后需要将新密码告知各部门\n- 此操作不可撤销')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/settings/departments/reset-all-passwords', {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('密码重置成功', 'success');
+        fetchDepartments();
+      } else {
+        showToast(json.error || '操作失败', 'error');
+      }
+    } catch (error) {
+      showToast('操作失败', 'error');
+    }
+  };
+
+  // 导出部门数据为CSV
+  const handleExportCSV = async () => {
+    if (departments.length === 0) {
+      showToast('暂无数据可导出', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/settings/departments/all-passwords');
+      const json = await res.json();
+
+      if (!json.success) {
+        showToast(json.error || '获取密码失败', 'error');
+        return;
+      }
+
+      // 转换为 map 方便查找
+      const passwordMap = new Map<string, string>();
+      json.data.forEach((item: { account: string; password: string }) => {
+        passwordMap.set(item.account, item.password);
+      });
+
+      // 表头
+      const headers = ['部门名称', '账号', '密码'];
+
+      // 转换数据为CSV格式
+      const rows = departments.map(dept => {
+        const password = passwordMap.get(dept.account) || '*';
+        return `${dept.name},${dept.account},${password}`;
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `部门账号_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('导出成功', 'success');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showToast('导出失败', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -314,15 +383,36 @@ export default function DepartmentsPage() {
               <p className="font-medium text-gray-800">{passwordManageDept.account}</p>
             </div>
 
+            {/* 原密码展示 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">当前密码</label>
+              <div className="relative">
+                <input
+                  type={showManagePassword ? 'text' : 'password'}
+                  value={loadingPassword ? '加载中...' : originalPassword}
+                  readOnly
+                  className="w-full px-4 py-3 pr-24 border border-gray-200 rounded-xl bg-gray-100 text-gray-800 font-mono"
+                  placeholder="点击显示密码"
+                />
+                <button
+                  onClick={() => setShowManagePassword(!showManagePassword)}
+                  className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700"
+                  title={showManagePassword ? '隐藏密码' : '显示密码'}
+                >
+                  {showManagePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
             {/* 新密码输入 */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">新密码</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">设置新密码</label>
               <div className="relative">
                 <input
                   type={showManagePassword ? 'text' : 'password'}
                   value={manualPassword}
                   onChange={(e) => setManualPassword(e.target.value)}
-                  placeholder="输入密码或点击随机生成"
+                  placeholder="输入新密码或点击随机生成"
                   className="w-full px-4 py-3 pr-24 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -351,6 +441,7 @@ export default function DepartmentsPage() {
                 const passwordToUse = manualPassword || generateRandomPassword();
                 setPasswordManageDept(null);
                 setManualPassword('');
+                setOriginalPassword('');
                 setShowManagePassword(false);
                 handleResetPassword(passwordManageDept, passwordToUse);
               }}
@@ -362,6 +453,7 @@ export default function DepartmentsPage() {
               onClick={() => {
                 setPasswordManageDept(null);
                 setManualPassword('');
+                setOriginalPassword('');
                 setShowManagePassword(false);
               }}
               className="w-full px-6 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
@@ -498,6 +590,24 @@ export default function DepartmentsPage() {
           <h3 className="font-semibold text-gray-800">职能部门列表 ({departments.length}个)</h3>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleResetAllPasswords}
+              disabled={departments.length === 0}
+              className="flex items-center gap-2 px-4 py-2 border border-amber-400 text-amber-600 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
+              title="重置所有部门密码"
+            >
+              <Shield size={16} />
+              重置密码
+            </button>
+            <button
+              onClick={handleExportCSV}
+              disabled={departments.length === 0}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              title="导出CSV"
+            >
+              <Download size={16} />
+              导出
+            </button>
+            <button
               onClick={handleSync}
               disabled={syncing}
               className="flex items-center gap-2 px-4 py-2 border border-[#1779DC] text-[#1779DC] rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
@@ -543,7 +653,26 @@ export default function DepartmentsPage() {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => setPasswordManageDept(dept)}
+                          onClick={async () => {
+                            setPasswordManageDept(dept);
+                            setManualPassword('');
+                            setShowManagePassword(false);
+                            // 获取原密码
+                            setLoadingPassword(true);
+                            try {
+                              const res = await fetch(`/api/admin/settings/departments/${dept.departId}/reset-password`);
+                              const json = await res.json();
+                              if (json.success) {
+                                setOriginalPassword(json.data.password);
+                              } else {
+                                setOriginalPassword('（无法获取原密码）');
+                              }
+                            } catch (error) {
+                              setOriginalPassword('（获取失败）');
+                            } finally {
+                              setLoadingPassword(false);
+                            }
+                          }}
                           className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                           title="密码管理"
                         >
@@ -566,7 +695,7 @@ export default function DepartmentsPage() {
                   {/* 编辑行展开 */}
                   {editingDeptId === dept.departId && (
                     <tr
-                      ref={(el) => editRowRefs.current[dept.departId] = el}
+                      ref={(el) => { editRowRefs.current[dept.departId] = el; }}
                       className="bg-blue-50/50"
                     >
                       <td colSpan={4} className="px-4 py-4">

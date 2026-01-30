@@ -7,6 +7,39 @@ import { Search, Filter, FileText, CheckCircle, Clock, ChevronLeft, ChevronRight
 
 type SortField = 'code' | 'title' | 'management' | 'status' | 'date';
 
+// 响应式样式
+const responsiveStyles = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .formal-proposals-animate-fade-in { animation: fadeIn 0.3s ease-out; }
+
+  @media (max-width: 768px) {
+    .formal-hero { padding: 20px 12px !important; }
+    .formal-hero-title { font-size: 22px !important; }
+    .formal-hero-icon { width: 48px !important; height: 48px !important; }
+    .formal-hero-icon svg { size: 24px !important; }
+    .formal-container { margin: -20px auto 20px !important; padding: 0 12px !important; }
+    .formal-card { padding: 16px !important; border-radius: 16px !important; }
+    .formal-section-title { font-size: 16px !important; margin-bottom: 14px !important; }
+    .formal-search-box { padding: 12px !important; flex-direction: column !important; }
+    .formal-search-input { width: 100% !important; }
+    .formal-search-select { width: 100% !important; }
+    .formal-search-btn { width: 100% !important; justify-content: center !important; }
+    .formal-filter-box { padding: 10px 12px !important; font-size: 13px !important; }
+    .formal-pagination { flex-direction: column !important; gap: 12px !important; }
+    .formal-pagination-info { width: 100% !important; justify-content: center !important; }
+    .formal-page-controls { width: 100% !important; justify-content: center !important; flex-wrap: wrap !important; gap: 8px !important; }
+    .formal-table-container { margin: 0 -12px !important; padding: 0 12px !important; overflow-x: auto !important; }
+    .formal-card-item { padding: 14px !important; margin-bottom: 10px !important; border-radius: 12px !important; }
+    .formal-card-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; margin-bottom: 10px !important; }
+    .formal-card-meta { flex-wrap: wrap !important; gap: 8px !important; }
+    .formal-card-row { flex-direction: column !important; gap: 8px !important; }
+    .formal-card-label { width: 70px !important; flex-shrink: 0 !important; }
+    .formal-card-value { flex: 1 !important; }
+    .formal-footer-link { padding: 12px !important; }
+  }
+`;
+
 export default function FormalProposalsPage() {
   const [proposals, setProposals] = useState<FormalProposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +51,14 @@ export default function FormalProposalsPage() {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const pageSize = 50;
+
+  // 注入响应式样式
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = responsiveStyles;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
 
   useEffect(() => {
     async function fetchFormalProposals() {
@@ -146,12 +187,12 @@ export default function FormalProposalsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div className="container mx-auto px-4 py-8 formal-proposals-animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden formal-card">
         {/* 页面标题 */}
-        <div className="section-header p-6 pb-4">
-          <h1 className="text-2xl font-bold text-[#2861AE] flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#1779DC] to-[#2861AE] rounded-xl flex items-center justify-center">
+        <div className="section-header p-6 pb-4 formal-section-title">
+          <h1 className="text-2xl font-bold text-[#2861AE] flex items-center gap-2 formal-hero-title">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#1779DC] to-[#2861AE] rounded-xl flex items-center justify-center formal-hero-icon">
               <FileText size={20} className="text-white" />
             </div>
             正式提案
@@ -160,8 +201,8 @@ export default function FormalProposalsPage() {
 
         {/* 搜索栏 */}
         <div className="mb-6 px-6">
-          <div className="flex gap-3 items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-100">
-            <div className="flex-1 relative">
+          <div className="flex gap-3 items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-100 formal-search-box">
+            <div className="flex-1 relative formal-search-input">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -190,7 +231,7 @@ export default function FormalProposalsPage() {
             <select
               value={searchType}
               onChange={(e) => setSearchType(e.target.value)}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent transition-all bg-white"
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent transition-all bg-white formal-search-select"
             >
               <option value="1">按标题</option>
               <option value="2">按编号</option>
@@ -198,7 +239,7 @@ export default function FormalProposalsPage() {
             </select>
             <button
               onClick={handleSearch}
-              className="px-6 py-3 bg-gradient-to-r from-[#1779DC] to-[#2861AE] text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-[#1779DC] to-[#2861AE] text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center gap-2 formal-search-btn"
             >
               <Search size={18} />
               搜索
@@ -208,7 +249,7 @@ export default function FormalProposalsPage() {
 
         {/* 统计信息 */}
         <div className="mb-4 px-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl text-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl text-sm formal-filter-box">
             <Filter size={16} className="text-[#1779DC]" />
             <span className="text-gray-600">
               共有 <strong className="text-[#1779DC]">{totalProposals}</strong> 条提案，
@@ -217,9 +258,10 @@ export default function FormalProposalsPage() {
           </div>
         </div>
 
-        {/* 提案表格 */}
-        <div className="overflow-x-auto px-6">
-          <table className="table-modern">
+        {/* 提案列表 */}
+        <div className="formal-table-container px-6">
+          {/* 桌面端表格 */}
+          <table className="table-modern hidden md:table">
             <thead>
               <tr>
                 <th className="px-5 py-4 text-left rounded-tl-xl">
@@ -283,12 +325,52 @@ export default function FormalProposalsPage() {
               )}
             </tbody>
           </table>
+
+          {/* 移动端卡片布局 */}
+          <div className="md:hidden">
+            {sortedProposals.length > 0 ? (
+              sortedProposals.map((proposal, index) => (
+                <div
+                  key={proposal.zstaId}
+                  className="formal-card-item bg-gray-50 border border-gray-100 hover:border-[#1779DC] transition-all"
+                  style={{ animationDelay: `${index * 20}ms`, animation: 'fadeIn 0.3s ease-out' }}
+                >
+                  <div className="formal-card-header flex justify-between items-start">
+                    <Link
+                      href={`/formal-proposals/${proposal.zstaId}`}
+                      className="text-[#1779DC] hover:text-[#2861AE] font-medium transition-colors text-base"
+                    >
+                      {proposal.title}
+                    </Link>
+                    <span className="font-mono text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                      {formatProposalCode(proposal)}
+                    </span>
+                  </div>
+                  <div className="formal-card-meta flex items-center gap-2 mb-2">
+                    {getStatusBadge(proposal.process)}
+                  </div>
+                  <div className="formal-card-row flex text-sm text-gray-500">
+                    <span className="formal-card-label">主办单位</span>
+                    <span className="formal-card-value">{proposal.management || '-'}</span>
+                  </div>
+                  <div className="formal-card-row flex text-sm text-gray-500 mt-2">
+                    <span className="formal-card-label">提交时间</span>
+                    <span className="formal-card-value">{proposal.createAt?.split(' ')[0]}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                {loading ? '加载中...' : '暂无数据'}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 分页 */}
-        <div className="p-6 pt-4">
+        <div className="p-6 pt-4 formal-pagination">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 formal-page-controls">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
@@ -357,7 +439,7 @@ export default function FormalProposalsPage() {
         </div>
 
         {/* 底部链接 */}
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 formal-footer-link">
           <Link
             href="/historical-formal-proposals"
             className="inline-flex items-center gap-2 text-[#1779DC] hover:text-[#2861AE] font-medium transition-colors group"

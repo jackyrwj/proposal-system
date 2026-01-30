@@ -4,6 +4,25 @@ import { query } from '@/lib/db';
 // GET /api/admin/dashboard - 获取后台工作台统计数据
 export async function GET(request: NextRequest) {
   try {
+    // 获取查询参数（时间筛选）
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    // 构建时间筛选条件
+    let dateCondition = '';
+    const dateParams: string[] = [];
+    if (startDate && endDate) {
+      dateCondition = ' AND createAt BETWEEN ? AND ?';
+      dateParams.push(`${startDate} 00:00:00`, `${endDate} 23:59:59`);
+    } else if (startDate) {
+      dateCondition = ' AND createAt >= ?';
+      dateParams.push(`${startDate} 00:00:00`);
+    } else if (endDate) {
+      dateCondition = ' AND createAt <= ?';
+      dateParams.push(`${endDate} 23:59:59`);
+    }
+
     // 获取当前时间，计算月份
     const now = new Date();
     const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
@@ -11,14 +30,14 @@ export async function GET(request: NextRequest) {
 
     // 并行获取所有统计数据
     const [
-      // 基础统计数据
+      // 基础统计数据（过滤已删除提案）
       totalProposals,
       totalFormal,
       totalNews,
       pendingProposals,
       pendingFormal,
 
-      // 本月数据
+      // 本月数据（过滤已删除提案）
       thisMonthProposals,
       thisMonthFormal,
       thisMonthNews,
@@ -27,59 +46,60 @@ export async function GET(request: NextRequest) {
       lastMonthProposals,
       lastMonthFormal,
 
-      // 提案建议状态分布
+      // 提案建议状态分布（过滤已删除）
       proposalStatusDistribution,
 
       // 正式提案状态分布
       formalStatusDistribution,
 
-      // 提案类型分布（个人/集体）
+      // 提案类型分布（个人/集体）（过滤已删除）
       proposalTypeDistribution,
 
-      // 部门提案数量 Top 10
+      // 部门提案数量 Top 10（过滤已删除）
       departmentStats,
 
-      // 提案分类统计
+      // 提案分类统计（过滤已删除）
       categoryStats,
 
-      // 近12个月提案趋势
+      // 近12个月提案趋势（过滤已删除）
       monthlyTrend,
 
       // AI转换统计
       aiConvertedStats,
 
-      // 提案热度 Top 10
+      // 提案热度 Top 10（过滤已删除）
       hotProposals,
 
-      // 附议人数分布
+      // 附议人数分布（过滤已删除）
       endorserDistribution,
 
-      // 匿名/实名提案统计
+      // 匿名/实名提案统计（过滤已删除）
       anonymousStats,
 
-      // 处理时长统计
+      // 处理时长统计（过滤已删除）
       processingTimeStats,
     ] = await Promise.all([
-      // 基础统计
-      query('SELECT COUNT(*) as count FROM tajy'),
-      query('SELECT COUNT(*) as count FROM zsta'),
-      query('SELECT COUNT(*) as count FROM news'),
-      query('SELECT COUNT(*) as count FROM tajy WHERE process = 0'),
-      query('SELECT COUNT(*) as count FROM zsta WHERE process = 0'),
+      // 基础统计（带时间筛选，过滤已删除）
+      query(`SELECT COUNT(*) as count FROM tajy WHERE deletedAt IS NULL${dateCondition}`, dateParams),
+      query(`SELECT COUNT(*) as count FROM zsta WHERE 1=1${dateCondition}`, dateParams),
+      query(`SELECT COUNT(*) as count FROM news WHERE 1=1${dateCondition.replace('createAt', 'createat')}`, dateParams),
+      query(`SELECT COUNT(*) as count FROM tajy WHERE deletedAt IS NULL AND process = 0${dateCondition}`, dateParams),
+      query(`SELECT COUNT(*) as count FROM zsta WHERE process = 0${dateCondition}`, dateParams),
 
-      // 本月数据
-      query(`SELECT COUNT(*) as count FROM tajy WHERE DATE_FORMAT(createAt, '%Y-%m') = ?`, [currentMonth]),
+      // 本月数据（过滤已删除）
+      query(`SELECT COUNT(*) as count FROM tajy WHERE deletedAt IS NULL AND DATE_FORMAT(createAt, '%Y-%m') = ?`, [currentMonth]),
       query(`SELECT COUNT(*) as count FROM zsta WHERE DATE_FORMAT(createAt, '%Y-%m') = ?`, [currentMonth]),
       query(`SELECT COUNT(*) as count FROM news WHERE DATE_FORMAT(createat, '%Y-%m') = ?`, [currentMonth]),
 
-      // 上月数据
-      query(`SELECT COUNT(*) as count FROM tajy WHERE DATE_FORMAT(createAt, '%Y-%m') = ?`, [lastMonth]),
+      // 上月数据（过滤已删除）
+      query(`SELECT COUNT(*) as count FROM tajy WHERE deletedAt IS NULL AND DATE_FORMAT(createAt, '%Y-%m') = ?`, [lastMonth]),
       query(`SELECT COUNT(*) as count FROM zsta WHERE DATE_FORMAT(createAt, '%Y-%m') = ?`, [lastMonth]),
 
-      // 提案建议状态分布
+      // 提案建议状态分布（过滤已删除）
       query(`
         SELECT process, COUNT(*) as count
         FROM tajy
+        WHERE deletedAt IS NULL
         GROUP BY process
         ORDER BY process
       `),
@@ -92,25 +112,26 @@ export async function GET(request: NextRequest) {
         ORDER BY process
       `),
 
-      // 提案类型分布
+      // 提案类型分布（过滤已删除）
       query(`
         SELECT type, COUNT(*) as count
         FROM tajy
+        WHERE deletedAt IS NULL
         GROUP BY type
         ORDER BY type
       `),
 
-      // 部门提案数量 Top 10
+      // 部门提案数量 Top 10（过滤已删除）
       query(`
         SELECT depart, COUNT(*) as count
         FROM tajy
-        WHERE depart IS NOT NULL AND depart != ''
+        WHERE deletedAt IS NULL AND depart IS NOT NULL AND depart != ''${dateCondition}
         GROUP BY depart
         ORDER BY count DESC
         LIMIT 10
-      `),
+      `, dateParams),
 
-      // 职能部门分类统计
+      // 职能部门分类统计（过滤已删除）
       query(`
         SELECT
           CASE
@@ -124,17 +145,18 @@ export async function GET(request: NextRequest) {
           END as category,
           COUNT(*) as count
         FROM tajy
+        WHERE deletedAt IS NULL
         GROUP BY category
         ORDER BY count DESC
       `),
 
-      // 近12个月提案趋势
+      // 近12个月提案趋势（过滤已删除）
       query(`
         SELECT
           DATE_FORMAT(createAt, '%Y-%m') as month,
           COUNT(*) as count
         FROM tajy
-        WHERE createAt >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        WHERE deletedAt IS NULL AND createAt >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
         GROUP BY DATE_FORMAT(createAt, '%Y-%m')
         ORDER BY month ASC
       `),
@@ -147,15 +169,16 @@ export async function GET(request: NextRequest) {
         FROM zsta
       `),
 
-      // 提案热度 Top 10（按点击量）
+      // 提案热度 Top 10（过滤已删除）
       query(`
         SELECT tajyId, title, clickCount, depart, name
         FROM tajy
+        WHERE deletedAt IS NULL${dateCondition}
         ORDER BY clickCount DESC
         LIMIT 10
-      `),
+      `, dateParams),
 
-      // 附议人数 Top 10（提案附议人最多的）
+      // 附议人数 Top 10（过滤已删除）
       query(`
         SELECT
           tajyId,
@@ -167,27 +190,29 @@ export async function GET(request: NextRequest) {
             ELSE LENGTH(fyr) - LENGTH(REPLACE(fyr, '，', '')) + 1
           END as endorserCount
         FROM tajy
+        WHERE deletedAt IS NULL${dateCondition}
         ORDER BY endorserCount DESC
         LIMIT 10
-      `),
+      `, dateParams),
 
-      // 匿名/实名提案统计
+      // 匿名/实名提案统计（过滤已删除）
       query(`
         SELECT
           sfnm,
           COUNT(*) as count
         FROM tajy
+        WHERE deletedAt IS NULL
         GROUP BY sfnm
       `),
 
-      // 处理时长统计（已立案提案的创建天数）
+      // 处理时长统计（过滤已删除）
       query(`
         SELECT
           tajyId,
           createAt,
           DATEDIFF(NOW(), createAt) as processingDays
         FROM tajy
-        WHERE process IN (1, 3)
+        WHERE deletedAt IS NULL AND process IN (1, 3)
       `),
     ]);
 
@@ -292,11 +317,12 @@ export async function GET(request: NextRequest) {
       ? Math.round((totalFormalCount / totalProposalsCount) * 100)
       : 0;
 
-    // 最新活动数据
+    // 最新活动数据（过滤已删除）
     const [recentProposals, recentFormal] = await Promise.all([
       query(`
         SELECT tajyId, title, createAt, 'tajy' as type
         FROM tajy
+        WHERE deletedAt IS NULL
         ORDER BY createAt DESC
         LIMIT 5
       `),
@@ -363,14 +389,14 @@ export async function GET(request: NextRequest) {
       { name: '90天以上', value: validProcessingTimes.filter((d: number) => d > 90).length },
     ].filter((item: any) => item.value > 0);
 
-    // 获取历年提案数据（单独查询，避免 Promise.all 过于复杂）
+    // 获取历年提案数据（过滤已删除）
     const [yearlyTajy, yearlyZsta] = await Promise.all([
       query(`
         SELECT
           DATE_FORMAT(createAt, '%Y') as year,
           COUNT(*) as count
         FROM tajy
-        WHERE createAt IS NOT NULL
+        WHERE deletedAt IS NULL AND createAt IS NOT NULL
         GROUP BY DATE_FORMAT(createAt, '%Y')
         ORDER BY year ASC
       `),

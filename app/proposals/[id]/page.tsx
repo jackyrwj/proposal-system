@@ -28,7 +28,7 @@ function getUserFromStorage(): CurrentUser | null {
 
 // 检查用户是否已附议
 function checkIfEndorsed(fyr: string | null, userId: string): boolean {
-  if (!fyr) return false;
+  if (!fyr || !userId) return false;
   const endorsements = fyr.split('，').filter(f => f.trim());
   return endorsements.some(e => e.includes(`(${userId})`));
 }
@@ -44,6 +44,9 @@ export default function ProposalDetailPage() {
   const [showEndorseSuccess, setShowEndorseSuccess] = useState(false);
   const [showRejectSuccess, setShowRejectSuccess] = useState(false);
   const [enableSign, setEnableSign] = useState<number>(1); // 默认开启附议功能
+  const [hasEndorsed, setHasEndorsed] = useState(false); // 用户是否已附议
+  const [confirming, setConfirming] = useState(false); // 提案人确认中
+  const [showConfirmSuccess, setShowConfirmSuccess] = useState(false); // 确认成功动画
 
   useEffect(() => {
     async function fetchProposalDetail() {
@@ -83,6 +86,21 @@ export default function ProposalDetailPage() {
           if (json.data.pendingEndorsement) {
             setPendingEndorsement(json.data.pendingEndorsement);
           }
+          // 检查当前用户是否已附议
+          if (user) {
+            const endorsed = checkIfEndorsed(json.data.fyr, user.id);
+            setHasEndorsed(endorsed);
+          }
+          // 调试日志
+          console.log('=== 提案人身份判断调试 ===');
+          console.log('提案 stuid:', json.data.stuid);
+          console.log('提案 name:', json.data.name);
+          console.log('用户 id:', user?.id);
+          console.log('用户 name:', user?.name);
+          console.log('isOwner:', json.data.isOwner);
+          // 前端额外判断：提案人姓名是否与当前用户名匹配
+          const isOwnerByName = user && user.name && json.data.name && user.name.trim() === json.data.name.trim();
+          console.log('isOwnerByName (前端判断):', isOwnerByName);
         }
       } catch (error) {
         console.error('Error fetching proposal detail:', error);
@@ -134,6 +152,115 @@ export default function ProposalDetailPage() {
       alert('操作失败，请稍后重试');
     } finally {
       setEndorsing(false);
+    }
+  };
+
+  // 主动附议提案
+  const handleDirectEndorse = async () => {
+    if (!currentUser || endorsing) return;
+
+    setEndorsing(true);
+    try {
+      const res = await fetch(`/api/proposals/${params.id}/endorse`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-info': encodeURIComponent(JSON.stringify(currentUser)),
+        },
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setHasEndorsed(true);
+        setShowEndorseSuccess(true);
+        setTimeout(() => setShowEndorseSuccess(false), 2000);
+        // 刷新提案详情以更新附议人列表
+        const proposalRes = await fetch(`/api/proposals/${params.id}`);
+        const proposalJson = await proposalRes.json();
+        if (proposalJson.success) {
+          setProposal(proposalJson.data);
+        }
+      } else {
+        alert(json.error || '附议失败');
+      }
+    } catch (error) {
+      console.error('Error endorsing proposal:', error);
+      alert('附议失败，请稍后重试');
+    } finally {
+      setEndorsing(false);
+    }
+  };
+
+  // 取消附议
+  const handleCancelEndorse = async () => {
+    if (!currentUser || endorsing) return;
+
+    if (!confirm('确定要取消附议吗？')) return;
+
+    setEndorsing(true);
+    try {
+      const res = await fetch(`/api/proposals/${params.id}/endorse`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-info': encodeURIComponent(JSON.stringify(currentUser)),
+        },
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setHasEndorsed(false);
+        setShowRejectSuccess(true);
+        setTimeout(() => setShowRejectSuccess(false), 2000);
+        // 刷新提案详情以更新附议人列表
+        const proposalRes = await fetch(`/api/proposals/${params.id}`);
+        const proposalJson = await proposalRes.json();
+        if (proposalJson.success) {
+          setProposal(proposalJson.data);
+        }
+      } else {
+        alert(json.error || '取消附议失败');
+      }
+    } catch (error) {
+      console.error('Error canceling endorsement:', error);
+      alert('取消附议失败，请稍后重试');
+    } finally {
+      setEndorsing(false);
+    }
+  };
+
+  // 提案人确认已读处理结果
+  const handleConfirmRead = async () => {
+    if (!currentUser || confirming || !proposal) return;
+
+    setConfirming(true);
+    try {
+      const res = await fetch(`/api/proposals/${params.id}/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-info': encodeURIComponent(JSON.stringify(currentUser)),
+        },
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setShowConfirmSuccess(true);
+        setTimeout(() => setShowConfirmSuccess(false), 2000);
+        // 刷新提案详情
+        const proposalRes = await fetch(`/api/proposals/${params.id}`);
+        const proposalJson = await proposalRes.json();
+        if (proposalJson.success) {
+          setProposal(proposalJson.data);
+        }
+      } else {
+        alert(json.error || '确认失败');
+      }
+    } catch (error) {
+      console.error('Error confirming read:', error);
+      alert('确认失败，请稍后重试');
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -243,6 +370,24 @@ export default function ProposalDetailPage() {
         </div>
       )}
 
+      {/* 提案人确认成功动画 */}
+      {showConfirmSuccess && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 flex flex-col items-center animate-scale-in">
+            <div className="relative mb-4">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-12 h-12 text-[#1779DC] animate-check-draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M4 12 L9 17 L20 5" />
+                </svg>
+              </div>
+              <div className="absolute inset-0 w-20 h-20 rounded-full border-2 border-[#1779DC] animate-ping" />
+            </div>
+            <p className="text-xl font-semibold text-gray-800">确认成功！</p>
+            <p className="text-gray-500 mt-1">感谢您的确认</p>
+          </div>
+        </div>
+      )}
+
       {/* 面包屑 */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
         <Link href="/" className="hover:text-[#1779DC] transition-colors flex items-center gap-1">
@@ -296,9 +441,13 @@ export default function ProposalDetailPage() {
         <article className="bg-white rounded-xl shadow-md overflow-hidden">
           {/* 标题区域 */}
           <div className="p-8 pb-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-blue-100">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h1 className="text-2xl font-bold text-gray-800 flex-1">{proposal.title}</h1>
-              {getStatusBadge(proposal.process)}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+              <h1 className="text-2xl font-bold text-gray-800 md:w-4/5 leading-snug order-1">
+                {proposal.title}
+              </h1>
+              <div className="order-2 flex-shrink-0">
+                {getStatusBadge(proposal.process)}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
@@ -410,6 +559,47 @@ export default function ProposalDetailPage() {
                   className="prose prose-green max-w-none text-gray-700 leading-relaxed bg-green-50 p-4 rounded-xl"
                   dangerouslySetInnerHTML={{ __html: proposal.description }}
                 />
+                {/* 提案人确认按钮 */}
+                {currentUser && currentUser.type === 'individual' &&
+                 (proposal.isOwner || (currentUser.name && proposal.name && currentUser.name.trim() === proposal.name.trim())) && (
+                  <div className="mt-4">
+                    {proposal.ownerConfirmed === 1 ? (
+                      // 已确认，显示置灰状态
+                      <div className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-600 rounded-xl">
+                        <CheckCircle size={18} className="text-green-600" />
+                        <span className="font-medium">您已于 {proposal.ownerConfirmedAt?.slice(0, 16).replace('T', ' ')} 确认知悉</span>
+                      </div>
+                    ) : (
+                      // 未确认，显示确认按钮
+                      <button
+                        onClick={handleConfirmRead}
+                        disabled={confirming}
+                        className={`px-4 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                          showConfirmSuccess
+                            ? 'bg-green-600 text-white'
+                            : 'bg-[#1779DC] hover:bg-[#2861AE] text-white'
+                        } ${confirming ? 'opacity-70 cursor-wait' : ''}`}
+                      >
+                        {confirming ? (
+                          <>
+                            <Loader2 size={18} className="animate-spin" />
+                            确认中...
+                          </>
+                        ) : showConfirmSuccess ? (
+                          <>
+                            <CheckCircle size={18} />
+                            已确认
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={18} />
+                            确认知悉处理结果
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -423,13 +613,22 @@ export default function ProposalDetailPage() {
                 {proposal.fyr || '暂无附议人'}
               </div>
 
-              {/* 附议邀请状态按钮 */}
-              {enableSign === 1 && currentUser && currentUser.type === 'individual' && parseInt(proposal.stuid) !== parseInt(currentUser.id || '0') ? (
+              {/* 附议操作按钮 */}
+              {enableSign === 1 && currentUser && currentUser.type === 'individual' ? (
                 <div className="mt-3">
-                  {pendingEndorsement ? (
-                    // 有附议邀请
+                  {/* 综合判断是否为自己的提案（后端判断 + 前端姓名匹配） */}
+                  {proposal.isOwner || (currentUser.name && proposal.name && currentUser.name.trim() === proposal.name.trim()) ? (
+                    // 提案人自己，显示置灰的按钮
+                    <button
+                      disabled
+                      className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 bg-gray-200 text-gray-500 cursor-not-allowed"
+                    >
+                      <Users size={16} />
+                      无法附议自己的提案
+                    </button>
+                  ) : pendingEndorsement ? (
+                    // 有附议邀请且待确认
                     pendingEndorsement.status === 'pending' ? (
-                      // 待确认：显示确认和拒绝按钮
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEndorseAction('accept')}
@@ -451,7 +650,7 @@ export default function ProposalDetailPage() {
                         </button>
                       </div>
                     ) : (
-                      // 已处理：显示状态
+                      // 附议邀请已处理过，显示当前附议状态
                       <span className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1 ${
                         pendingEndorsement.status === 'accepted'
                           ? 'bg-green-100 text-green-700'
@@ -461,15 +660,29 @@ export default function ProposalDetailPage() {
                         {pendingEndorsement.status === 'accepted' ? '已接受附议' : '已拒绝附议'}
                       </span>
                     )
+                  ) : hasEndorsed ? (
+                    // 已附议此提案，显示取消附议按钮
+                    <button
+                      onClick={handleCancelEndorse}
+                      disabled={endorsing}
+                      className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                        showRejectSuccess ? 'bg-gray-500' : 'bg-red-500 hover:bg-red-600'
+                      } text-white ${endorsing ? 'opacity-70 cursor-wait' : ''}`}
+                    >
+                      {endorsing ? '处理中...' : showRejectSuccess ? '已取消' : '取消附议'}
+                    </button>
                   ) : (
-                    // 无附议邀请：显示提示（暂未受邀附议此提案）
-                    <p className="text-sm text-gray-400">暂未受邀附议此提案</p>
+                    // 未附议，显示「我要附议」按钮
+                    <button
+                      onClick={handleDirectEndorse}
+                      disabled={endorsing}
+                      className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                        showEndorseSuccess ? 'bg-green-600' : 'bg-[#1779DC] hover:bg-[#2861AE]'
+                      } text-white ${endorsing ? 'opacity-70 cursor-wait' : ''}`}
+                    >
+                      {endorsing ? '处理中...' : showEndorseSuccess ? '已附议' : '我要附议'}
+                    </button>
                   )}
-                </div>
-              ) : enableSign === 1 && currentUser && currentUser.type === 'individual' && parseInt(proposal.stuid) === parseInt(currentUser.id || '0') ? (
-                // 提案人自己，显示提示
-                <div className="mt-3">
-                  <p className="text-sm text-gray-500 italic">无法对自己的提案附议</p>
                 </div>
               ) : null}
               {/* 附议功能开启时，个人账户未登录提示 */}

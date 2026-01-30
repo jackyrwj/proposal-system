@@ -89,7 +89,20 @@ export default function Header() {
 
     // 每 30 秒刷新一次未读数量
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+
+    // 监听来自其他页面的消息已读事件
+    const handleMessagesRead = (e: CustomEvent) => {
+      setUnreadCount(prev => Math.max(0, prev - (e.detail.count || 1)));
+      // 异步刷新以确保准确性
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('messagesRead' as any, handleMessagesRead);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('messagesRead' as any, handleMessagesRead);
+    };
   }, [user]);
 
   // 获取消息列表 - 获取所有消息（包括已读），直接使用数据库的 hasRead 状态
@@ -131,17 +144,29 @@ export default function Header() {
           )
         );
 
-        // 重新获取未读数量
-        const unreadRes = await fetch('/api/messages/unread');
-        const unreadJson = await unreadRes.json();
-        if (unreadJson.success) {
-          setUnreadCount(unreadJson.count);
-        }
+        // 立即更新未读数量（乐观更新）
+        setUnreadCount(prev => Math.max(0, prev - 1));
+
+        // 异步重新获取未读数量以确保准确性
+        fetch('/api/messages/unread')
+          .then(unreadRes => unreadRes.json())
+          .then(unreadJson => {
+            if (unreadJson.success) {
+              setUnreadCount(unreadJson.count);
+            }
+          })
+          .catch(err => console.error('Error refreshing unread count:', err));
       }
-      // 如果有提案ID，跳转到提案详情页
+      // 如果有提案ID，先检查提案是否存在，再跳转
       if (proposalId) {
-        setMessageMenuOpen(false);
-        router.push(`/proposals/${proposalId}`);
+        const proposalRes = await fetch(`/api/proposals/${proposalId}`);
+        const proposalJson = await proposalRes.json();
+        if (proposalJson.success) {
+          setMessageMenuOpen(false);
+          router.push(`/proposals/${proposalId}`);
+        } else {
+          alert('该提案已被删除');
+        }
       }
     } catch (error) {
       console.error('Error marking as read:', error);
@@ -166,7 +191,18 @@ export default function Header() {
           prev.map(msg => ({ ...msg, hasRead: 1 }))
         );
 
+        // 立即设置未读数量为0（乐观更新）
         setUnreadCount(0);
+
+        // 异步重新获取未读数量以确保准确性
+        fetch('/api/messages/unread')
+          .then(unreadRes => unreadRes.json())
+          .then(unreadJson => {
+            if (unreadJson.success) {
+              setUnreadCount(unreadJson.count);
+            }
+          })
+          .catch(err => console.error('Error refreshing unread count:', err));
       }
     } catch (error) {
       console.error('Error marking all as read:', error);
@@ -186,7 +222,7 @@ export default function Header() {
 
     // 跳转到 CAS logout 退出统一身份认证，然后回到首页
     const CAS_SERVER = 'https://authserver.szu.edu.cn/authserver/';
-    const SERVICE_URL = 'http://172.31.171.244:3000/';
+    const SERVICE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     window.location.href = `${CAS_SERVER}logout?service=${encodeURIComponent(SERVICE_URL)}`;
   };
 
@@ -207,9 +243,11 @@ export default function Header() {
           <div className="flex items-center justify-between py-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                <User className="text-[#1779DC]" size={22} />
-              </div>
+              <img
+                src="/jdh.ico"
+                alt="教代会提案系统"
+                className="w-10 h-10 rounded-xl shadow-lg group-hover:scale-105 transition-transform object-contain bg-white"
+              />
               <span className="hidden sm:block font-bold text-lg text-white">
                 教代会提案系统
               </span>
@@ -262,7 +300,10 @@ export default function Header() {
                           className="fixed inset-0 z-10"
                           onClick={() => setMessageMenuOpen(false)}
                         ></div>
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl z-20 overflow-hidden">
+                        <div
+                          className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-xl z-20 overflow-hidden"
+                          style={{ width: '320px', maxWidth: 'calc(100vw - 32px)' }}
+                        >
                           {/* 消息头部 */}
                           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                             <span className="font-semibold text-gray-700">站内信</span>
@@ -277,7 +318,7 @@ export default function Header() {
                           </div>
 
                           {/* 消息列表 */}
-                          <div className="max-h-80 overflow-y-auto">
+                          <div className="max-h-80 overflow-y-auto" style={{ maxHeight: '320px' }}>
                             {messages.length === 0 ? (
                               <div className="px-4 py-8 text-center text-gray-400 text-sm">
                                 暂无消息
@@ -286,10 +327,29 @@ export default function Header() {
                               messages.map((msg) => {
                                 // 直接使用数据库的 hasRead 字段判断是否已读
                                 const isRead = msg.hasRead === 1;
+                                // 安全获取 proposalId
+                                const proposalId = msg.context && typeof msg.context === 'object'
+                                  ? msg.context.proposalId
+                                  : undefined;
                                 return (
                                   <div
                                     key={msg.msgId}
-                                    onClick={() => !isRead && markAsRead(msg.msgId, msg.context?.proposalId)}
+                                    onClick={async () => {
+                                      if (!isRead && proposalId) {
+                                        // 先标记为已读，再检查提案是否存在
+                                        await markAsRead(msg.msgId, proposalId);
+                                      } else if (isRead && proposalId) {
+                                        // 已读消息，检查提案是否存在再跳转
+                                        const res = await fetch(`/api/proposals/${proposalId}`);
+                                        const json = await res.json();
+                                        if (json.success) {
+                                          setMessageMenuOpen(false);
+                                          router.push(`/proposals/${proposalId}`);
+                                        } else {
+                                          alert('该提案已被删除');
+                                        }
+                                      }
+                                    }}
                                     className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
                                       isRead ? 'bg-gray-100' : 'hover:bg-gray-50'
                                     }`}
@@ -408,12 +468,27 @@ export default function Header() {
             </div>
 
             {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all"
-            >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <div className="lg:hidden flex items-center gap-2">
+              {user && (
+                <Link
+                  href="/messages"
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all relative"
+                >
+                  <Mail size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all"
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu */}

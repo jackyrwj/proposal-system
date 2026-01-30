@@ -17,6 +17,8 @@ import {
   Building2,
   User,
   Calendar,
+  Printer,
+  CalendarDays,
 } from 'lucide-react';
 import { FormalProposal, FORMAL_PROPOSAL_PROCESS_MAP, Proposal, PROPOSAL_TYPE_MAP, PROPOSAL_PROCESS_STATUS_MAP } from '@/types';
 
@@ -29,6 +31,12 @@ export default function AdminZstaPage() {
   const [actualKeyword, setActualKeyword] = useState('');
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
 
+  // 时间筛选状态
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actualStartDate, setActualStartDate] = useState('');
+  const [actualEndDate, setActualEndDate] = useState('');
+
   // 删除状态
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingSelected, setDeletingSelected] = useState(false);
@@ -39,9 +47,29 @@ export default function AdminZstaPage() {
 
   const pageSize = 20;
 
+  // 初始化默认日期范围（近12个月）
+  useEffect(() => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    // 格式化日期 YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    setEndDate(formatDate(today));
+    setStartDate(formatDate(twelveMonthsAgo));
+    setActualEndDate(formatDate(today));
+    setActualStartDate(formatDate(twelveMonthsAgo));
+  }, []);
+
   useEffect(() => {
     fetchProposals();
-  }, [currentPage, actualKeyword]);
+  }, [currentPage, actualKeyword, actualStartDate, actualEndDate]);
 
   const fetchProposals = async () => {
     setLoading(true);
@@ -49,6 +77,13 @@ export default function AdminZstaPage() {
       let url = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/formal-proposals?limit=${pageSize}&page=${currentPage}`;
       if (actualKeyword) {
         url += `&keyword=${encodeURIComponent(actualKeyword)}&type=title`;
+      }
+      // 添加日期范围参数
+      if (actualStartDate) {
+        url += `&startDate=${actualStartDate}`;
+      }
+      if (actualEndDate) {
+        url += `&endDate=${actualEndDate}`;
       }
       const res = await fetch(url, {
         cache: 'no-store',
@@ -67,6 +102,36 @@ export default function AdminZstaPage() {
 
   const handleSearch = () => {
     setActualKeyword(searchKeyword);
+    setCurrentPage(1);
+  };
+
+  // 应用日期筛选
+  const handleDateFilter = () => {
+    setActualStartDate(startDate);
+    setActualEndDate(endDate);
+    setCurrentPage(1);
+  };
+
+  // 重置日期筛选
+  const handleResetDateFilter = () => {
+    const today = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(today.getMonth() - 12);
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const defaultStart = formatDate(twelveMonthsAgo);
+    const defaultEnd = formatDate(today);
+
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
+    setActualStartDate(defaultStart);
+    setActualEndDate(defaultEnd);
     setCurrentPage(1);
   };
 
@@ -251,6 +316,17 @@ export default function AdminZstaPage() {
     }
   };
 
+  // 批量打印选中的提案
+  const handleBatchPrint = () => {
+    if (selectedItems.length === 0) {
+      alert('请先选择要打印的提案');
+      return;
+    }
+    // 跳转到批量打印页面
+    const ids = selectedItems.join(',');
+    window.open(`/print/batch?zsta=${ids}`, '_blank');
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -272,6 +348,14 @@ export default function AdminZstaPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={handleBatchPrint}
+            disabled={selectedItems.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+          >
+            <Printer size={18} />
+            打印所选 ({selectedItems.length})
+          </button>
+          <button
             onClick={handleBatchDelete}
             disabled={selectedItems.length === 0 || deletingSelected}
             className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
@@ -291,7 +375,8 @@ export default function AdminZstaPage() {
 
       {/* Search Bar */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex gap-3 items-center">
+        {/* 关键词搜索 */}
+        <div className="flex gap-3 items-center mb-4">
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -306,6 +391,44 @@ export default function AdminZstaPage() {
             <Search size={18} />
             搜索
           </button>
+        </div>
+        {/* 日期筛选 */}
+        <div className="flex gap-3 items-center flex-wrap">
+          <div className="flex items-center gap-2 text-gray-600">
+            <CalendarDays size={16} />
+            <span className="text-sm font-medium">提交时间：</span>
+          </div>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1779DC] focus:border-transparent text-sm"
+          />
+          <span className="text-gray-400">至</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1779DC] focus:border-transparent text-sm"
+          />
+          <button
+            onClick={handleDateFilter}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            筛选
+          </button>
+          <button
+            onClick={handleResetDateFilter}
+            className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors text-sm"
+          >
+            重置
+          </button>
+          {/* 显示当前筛选条件 */}
+          {(actualStartDate || actualEndDate) && (
+            <span className="text-sm text-[#1779DC] ml-auto">
+              当前筛选: {actualStartDate} 至 {actualEndDate}
+            </span>
+          )}
         </div>
       </div>
 

@@ -7,6 +7,39 @@ import { Search, Filter, Send, CheckCircle, Clock, ChevronLeft, ChevronRight, Ar
 
 type SortField = 'code' | 'title' | 'type' | 'status' | 'date';
 
+// 响应式样式
+const responsiveStyles = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .proposals-animate-fade-in { animation: fadeIn 0.3s ease-out; }
+
+  @media (max-width: 768px) {
+    .proposals-hero { padding: 20px 12px !important; }
+    .proposals-hero-title { font-size: 22px !important; }
+    .proposals-hero-icon { width: 48px !important; height: 48px !important; }
+    .proposals-hero-icon svg { size: 24px !important; }
+    .proposals-container { margin: -20px auto 20px !important; padding: 0 12px !important; }
+    .proposals-card { padding: 16px !important; border-radius: 16px !important; }
+    .proposals-section-title { font-size: 16px !important; margin-bottom: 14px !important; }
+    .proposals-search-box { padding: 12px !important; flex-direction: column !important; }
+    .proposals-search-input { width: 100% !important; }
+    .proposals-search-select { width: 100% !important; }
+    .proposals-search-btn { width: 100% !important; justify-content: center !important; }
+    .proposals-filter-box { padding: 10px 12px !important; font-size: 13px !important; }
+    .proposals-pagination { flex-direction: column !important; gap: 12px !important; }
+    .proposals-pagination-info { width: 100% !important; justify-content: center !important; }
+    .proposals-page-controls { width: 100% !important; justify-content: center !important; flex-wrap: wrap !important; gap: 8px !important; }
+    .proposals-table-container { margin: 0 -12px !important; padding: 0 12px !important; overflow-x: auto !important; }
+    .proposals-card-item { padding: 14px !important; margin-bottom: 10px !important; border-radius: 12px !important; }
+    .proposals-card-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; margin-bottom: 10px !important; }
+    .proposals-card-meta { flex-wrap: wrap !important; gap: 8px !important; }
+    .proposals-card-row { flex-direction: column !important; gap: 8px !important; }
+    .proposals-card-label { width: 70px !important; flex-shrink: 0 !important; }
+    .proposals-card-value { flex: 1 !important; }
+    .proposals-footer-link { padding: 12px !important; }
+  }
+`;
+
 export default function ProposalsPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +51,14 @@ export default function ProposalsPage() {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const pageSize = 50;
+
+  // 注入响应式样式
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = responsiveStyles;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
 
   useEffect(() => {
     async function fetchProposals() {
@@ -135,12 +176,12 @@ export default function ProposalsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div className="container mx-auto px-4 py-8 proposals-animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden proposals-card">
         {/* 页面标题 */}
-        <div className="section-header p-6 pb-4">
-          <h1 className="text-2xl font-bold text-[#2861AE] flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#1779DC] to-[#2861AE] rounded-xl flex items-center justify-center">
+        <div className="section-header p-6 pb-4 proposals-section-title">
+          <h1 className="text-2xl font-bold text-[#2861AE] flex items-center gap-2 proposals-hero-title">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#1779DC] to-[#2861AE] rounded-xl flex items-center justify-center proposals-hero-icon">
               <Send size={20} className="text-white" />
             </div>
             提案建议
@@ -149,8 +190,8 @@ export default function ProposalsPage() {
 
         {/* 搜索栏 */}
         <div className="mb-6 px-6">
-          <div className="flex gap-3 items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-100">
-            <div className="flex-1 relative">
+          <div className="flex gap-3 items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-100 proposals-search-box">
+            <div className="flex-1 relative proposals-search-input">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -179,14 +220,14 @@ export default function ProposalsPage() {
             <select
               value={searchType}
               onChange={(e) => setSearchType(e.target.value)}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent transition-all bg-white"
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1779DC] focus:border-transparent transition-all bg-white proposals-search-select"
             >
               <option value="1">按标题</option>
               <option value="2">按编号</option>
             </select>
             <button
               onClick={handleSearch}
-              className="px-6 py-3 bg-gradient-to-r from-[#1779DC] to-[#2861AE] text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-[#1779DC] to-[#2861AE] text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center gap-2 proposals-search-btn"
             >
               <Search size={18} />
               搜索
@@ -196,7 +237,7 @@ export default function ProposalsPage() {
 
         {/* 统计信息 */}
         <div className="mb-4 px-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl text-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl text-sm proposals-filter-box">
             <Filter size={16} className="text-[#1779DC]" />
             <span className="text-gray-600">
               共有 <strong className="text-[#1779DC]">{totalProposals}</strong> 条提案，
@@ -205,9 +246,10 @@ export default function ProposalsPage() {
           </div>
         </div>
 
-        {/* 提案表格 */}
-        <div className="overflow-x-auto px-6">
-          <table className="table-modern">
+        {/* 提案列表 */}
+        <div className="proposals-table-container px-6">
+          {/* 桌面端表格 */}
+          <table className="table-modern hidden md:table">
             <thead>
               <tr>
                 <th className="px-5 py-4 text-left rounded-tl-xl">
@@ -276,12 +318,56 @@ export default function ProposalsPage() {
               )}
             </tbody>
           </table>
+
+          {/* 移动端卡片布局 */}
+          <div className="md:hidden">
+            {sortedProposals.length > 0 ? (
+              sortedProposals.map((proposal, index) => (
+                <div
+                  key={proposal.tajyId}
+                  className="proposals-card-item bg-gray-50 border border-gray-100 hover:border-[#1779DC] transition-all"
+                  style={{ animationDelay: `${index * 20}ms`, animation: 'fadeIn 0.3s ease-out' }}
+                >
+                  <div className="proposals-card-header flex justify-between items-start">
+                    <Link
+                      href={`/proposals/${proposal.tajyId}`}
+                      className="text-[#1779DC] hover:text-[#2861AE] font-medium transition-colors text-base"
+                    >
+                      {proposal.title}
+                    </Link>
+                    <span className="font-mono text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                      TY{String(proposal.tajyId).padStart(4, '0')}
+                    </span>
+                  </div>
+                  <div className="proposals-card-meta flex items-center gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium inline-flex items-center gap-1 border ${
+                      proposal.type === 1
+                        ? 'bg-orange-50 text-orange-700 border-orange-200'
+                        : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                    }`}>
+                      {proposal.type === 1 ? <User size={12} /> : <Users size={12} />}
+                      {PROPOSAL_TYPE_MAP[proposal.type] || '其他'}
+                    </span>
+                    {getStatusBadge(proposal.process)}
+                  </div>
+                  <div className="proposals-card-row flex text-sm text-gray-500">
+                    <span className="proposals-card-label">提交时间</span>
+                    <span className="proposals-card-value">{proposal.createAt?.split(' ')[0]}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                {loading ? '加载中...' : '暂无数据'}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 分页 */}
-        <div className="p-6 pt-4">
+        <div className="p-6 pt-4 proposals-pagination">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 proposals-page-controls">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
@@ -350,7 +436,7 @@ export default function ProposalsPage() {
         </div>
 
         {/* 底部链接 */}
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 proposals-footer-link">
           <Link
             href="/historical-proposals"
             className="inline-flex items-center gap-2 text-[#1779DC] hover:text-[#2861AE] font-medium transition-colors group"
